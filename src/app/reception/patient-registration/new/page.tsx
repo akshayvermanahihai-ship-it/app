@@ -76,6 +76,8 @@ export default function NewPatientRegistration() {
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [lastPatient, setLastPatient] = useState<{cro: string, patient_name: string} | null>(null);
   const [timeSlots, setTimeSlots] = useState<{time_id: number, time_slot: string}[]>([]);
+  const [isSaved, setIsSaved] = useState(false);
+  const [savedPatientData, setSavedPatientData] = useState<any>(null);
   
   const [formData, setFormData] = useState<FormData>({
     date: new Date().toLocaleDateString('en-GB').split('/').reverse().join('-'),
@@ -137,18 +139,28 @@ export default function NewPatientRegistration() {
     };
   }, []);
 
-  // Auto-select current time when timeSlots are loaded and appointment date is today
+  // Auto-set current time when appointment date is today
   useEffect(() => {
-    if (timeSlots.length > 0 && !isEditMode && !formData.time) {
+    if (!isEditMode && !formData.time) {
       const today = new Date();
       const appointmentDate = new Date(formData.appoint_date);
       const isToday = appointmentDate.toDateString() === today.toDateString();
       
       if (isToday) {
-        autoSelectCurrentTime();
+        const currentTime = getCurrentTime();
+        const currentTimeAMPM = formatTimeToAMPM(currentTime);
+        setFormData(prev => ({ ...prev, time: currentTime }));
+        setTimeInSearchTerm(currentTimeAMPM);
       }
     }
-  }, [timeSlots, formData.appoint_date]);
+  }, [formData.appoint_date]);
+
+  // Auto-calculate time out when time in or estimated time changes
+  useEffect(() => {
+    if (formData.time && formData.est_time && parseInt(formData.est_time) > 0) {
+      calculateTimeOut(formData.time, parseInt(formData.est_time));
+    }
+  }, [formData.time, formData.est_time]);
 
   // Auto-calculate time out when estimated time changes
   useEffect(() => {
@@ -215,13 +227,34 @@ export default function NewPatientRegistration() {
       const response = await fetch('https://varahasdc.co.in/api/reception/time-slots');
       if (response.ok) {
         const data = await response.json();
-        setTimeSlots(Array.isArray(data) ? data : []);
+        const slots = Array.isArray(data) ? data : [];
+        console.log('Fetched time slots:', slots);
+        setTimeSlots(slots);
+      } else {
+        console.error('Failed to fetch time slots, using fallback');
+        generateFallbackTimeSlots();
       }
     } catch (error) {
       console.error('Error fetching time slots:', error);
-      // Fallback to empty array if API fails
-      setTimeSlots([]);
+      generateFallbackTimeSlots();
     }
+  };
+
+  // Generate fallback time slots if API fails - every 15 minutes for 24 hours
+  const generateFallbackTimeSlots = () => {
+    const fallbackSlots = [];
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) { // Every 15 minutes instead of every minute
+        const time24 = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        const timeAMPM = formatTimeToAMPM(time24);
+        fallbackSlots.push({
+          time_id: fallbackSlots.length + 1,
+          time_slot: timeAMPM
+        });
+      }
+    }
+    console.log('Using fallback time slots:', fallbackSlots.length);
+    setTimeSlots(fallbackSlots);
   };
 
   const fetchLastPatient = async () => {
@@ -356,7 +389,22 @@ export default function NewPatientRegistration() {
   // Filter time slots based on appointment date and current time
   const getFilteredTimeSlots = () => {
     const now = new Date();
-    const selectedDate = new Date(formData.appoint_date);
+    
+    // Parse appointment date properly - handle both YYYY-MM-DD and DD-MM-YYYY formats
+    let selectedDate;
+    if (formData.appoint_date.includes('-')) {
+      // YYYY-MM-DD format
+      selectedDate = new Date(formData.appoint_date);
+    } else {
+      // DD/MM/YYYY format - convert to proper date
+      const parts = formData.appoint_date.split('/');
+      if (parts.length === 3) {
+        selectedDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+      } else {
+        selectedDate = new Date(formData.appoint_date);
+      }
+    }
+    
     const isToday = selectedDate.toDateString() === now.toDateString();
     
     if (!isToday) {
@@ -364,12 +412,12 @@ export default function NewPatientRegistration() {
       return timeSlots;
     }
     
-    // For today, filter slots to show only current time and later
+    // For today, show slots from current time + 5 minutes onwards
     const currentHour = now.getHours();
     const currentMinute = now.getMinutes();
-    const currentTimeInMinutes = currentHour * 60 + currentMinute;
+    const currentTimeInMinutes = currentHour * 60 + currentMinute + 5; // Add 5 minute buffer
     
-    return timeSlots.filter(slot => {
+    const filtered = timeSlots.filter(slot => {
       // Extract time from slot.time_slot (format: "HH:MM AM/PM")
       const timeMatch = slot.time_slot.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
       if (!timeMatch) return false;
@@ -387,30 +435,75 @@ export default function NewPatientRegistration() {
       
       const slotTimeInMinutes = hour * 60 + minute;
       
-      // Show slots that are current time or later
+      // Show slots that are from current time + buffer onwards
       return slotTimeInMinutes >= currentTimeInMinutes;
     });
+    
+    console.log('Filtered time slots:', {
+      currentTime: `${currentHour}:${currentMinute}`,
+      totalSlots: timeSlots.length,
+      filteredSlots: filtered.length,
+      isToday
+    });
+    
+    return filtered;
   };
 
   const calculateTimeOut = (timeIn: string, estimatedMinutes: number) => {
     if (!timeIn || !estimatedMinutes) return;
     
-    // Parse time in format HH:MM
-    const [hours, minutes] = timeIn.split(':').map(Number);
+    let hours, minutes;
+    
+    // Handle both 24-hour (HH:MM) and 12-hour (HH:MM AM/PM) formats
+    if (timeIn.includes('AM') || timeIn.includes('PM')) {
+      const timeMatch = timeIn.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+      if (!timeMatch) return;
+      
+      hours = parseInt(timeMatch[1]);
+      minutes = parseInt(timeMatch[2]);
+      const period = timeMatch[3].toUpperCase();
+      
+      // Convert to 24-hour format
+      if (period === 'PM' && hours !== 12) {
+        hours += 12;
+      } else if (period === 'AM' && hours === 12) {
+        hours = 0;
+      }
+    } else {
+      // Already in 24-hour format
+      [hours, minutes] = timeIn.split(':').map(Number);
+    }
+    
     const timeInDate = new Date();
     timeInDate.setHours(hours, minutes, 0, 0);
     
     // Add estimated minutes
     const timeOutDate = new Date(timeInDate.getTime() + estimatedMinutes * 60000);
     
-    // Format back to HH:MM
+    // Format back to 24-hour format
     const timeOut = `${timeOutDate.getHours().toString().padStart(2, '0')}:${timeOutDate.getMinutes().toString().padStart(2, '0')}`;
     
-    setFormData(prev => ({
-      ...prev,
-      time_in: timeOut
-    }));
+    // Set calculated time out
+    setFormData(prev => ({ ...prev, time_in: timeOut }));
     setTimeOutSearchTerm(formatTimeToAMPM(timeOut));
+  };
+
+  // Convert 12-hour format to 24-hour format
+  const convertTo24Hour = (time12: string) => {
+    const timeMatch = time12.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (!timeMatch) return time12;
+    
+    let hour = parseInt(timeMatch[1]);
+    const minute = parseInt(timeMatch[2]);
+    const period = timeMatch[3].toUpperCase();
+    
+    if (period === 'PM' && hour !== 12) {
+      hour += 12;
+    } else if (period === 'AM' && hour === 12) {
+      hour = 0;
+    }
+    
+    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
   };
 
   // Get current time when appointment date changes
@@ -426,7 +519,7 @@ export default function NewPatientRegistration() {
     const currentMinute = today.getMinutes();
     const currentTimeInMinutes = currentHour * 60 + currentMinute;
     
-    // Find the closest available time slot that matches or is after current time
+    // Find the first available time slot that is at or after current time
     const availableSlot = timeSlots.find(slot => {
       const timeMatch = slot.time_slot.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
       if (!timeMatch) return false;
@@ -461,13 +554,22 @@ export default function NewPatientRegistration() {
     setTimeInSearchTerm('');
     setTimeOutSearchTerm('');
     
-    // If selecting today's date, auto-select current time
+    // If selecting today's date, set current time
     const selectedDate = new Date(value);
     const today = new Date();
     const isToday = selectedDate.toDateString() === today.toDateString();
     
-    if (isToday && timeSlots.length > 0) {
-      setTimeout(() => autoSelectCurrentTime(), 100);
+    if (isToday) {
+      const currentTime = getCurrentTime();
+      const currentTimeAMPM = formatTimeToAMPM(currentTime);
+      setFormData(prev => ({ ...prev, time: currentTime }));
+      setTimeInSearchTerm(currentTimeAMPM);
+      
+      // Auto-calculate time out if estimated time is available
+      const estimatedTime = parseInt(formData.est_time) || 0;
+      if (estimatedTime > 0) {
+        calculateTimeOut(currentTime, estimatedTime);
+      }
     }
   };
 
@@ -636,8 +738,6 @@ export default function NewPatientRegistration() {
 
   const handleSubmit = async (action: string) => {
     try {
-      // No validation needed - allow printing regardless of payment status
-      
       // Prepare data in the format expected by the API
       const submitData = {
         hospital_name: formData.hospital_name,
@@ -663,19 +763,17 @@ export default function NewPatientRegistration() {
         rec_amount: formData.rec_amount,
         due_amount: formData.due_amount,
         admin_id: 1,
-        action: action // Send action to API
+        action: action
       };
 
       let response;
       if (isEditMode && editPatientId) {
-        // Update existing patient
         response = await fetch(`https://varahasdc.co.in/api/reception/patients/${editPatientId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(submitData)
         });
       } else {
-        // Create new patient
         response = await fetch('https://varahasdc.co.in/api/reception/patients', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -687,38 +785,22 @@ export default function NewPatientRegistration() {
         const result = await response.json();
         const cro = result.data?.cro || (isEditMode ? 'Updated' : 'Registered');
         
-        if (isEditMode) {
+        if (action === 'Save') {
+          // Save action - enable print button
+          setIsSaved(true);
+          setSavedPatientData(result.data);
           if (toast && typeof toast.success === 'function') {
-            toast.success(`Patient updated successfully! CRO: ${cro}`);
+            toast.success(`Patient ${isEditMode ? 'updated' : 'registered'} successfully! CRO: ${cro}`);
           }
-          
-          if (action === 'Save_Print') {
-            // Print receipt for updated patient
-            printReceipt(result.data);
+        } else if (action === 'Print') {
+          // Print action - print and redirect
+          printReceipt(savedPatientData || result.data);
+          if (toast && typeof toast.info === 'function') {
+            toast.info('Receipt printed successfully!');
           }
-          
-          // Redirect to patient list after update
           setTimeout(() => {
-            window.location.href = '/reception/patient-registration/edit';
-          }, action === 'Save_Print' ? 3000 : 2000);
-        } else {
-          if (toast && typeof toast.success === 'function') {
-            toast.success(`Patient registered successfully! CRO: ${cro}`);
-          }
-          
-          if (action === 'Save_Print') {
-            // Print receipt for new patient
-            printReceipt(result.data);
-            if (toast && typeof toast.info === 'function') {
-              toast.info('Receipt printed successfully!');
-            }
-            // Stay in payment details - no form reset
-          }
-          
-          // Reset form for new registration (Save action)
-          if (action === 'Save') {
-            resetForm();
-          }
+            window.location.href = '/reception/patient-registration';
+          }, 2000);
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
@@ -1479,106 +1561,24 @@ export default function NewPatientRegistration() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                <div className="relative">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Time In <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={timeInSearchTerm}
-                      onChange={(e) => {
-                        setTimeInSearchTerm(e.target.value);
-                        setShowTimeInDropdown(true);
-                      }}
-                      onFocus={() => setShowTimeInDropdown(true)}
-                      className={`w-full px-3 py-2 pr-10 border rounded-md focus:outline-none focus:ring-2 ${
-                        errors.time ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
-                      }`}
-                      placeholder="Search and select time"
-                      required
-                    />
-                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                  </div>
-                  {showTimeInDropdown && (
-                    <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
-                      {getFilteredTimeSlots()
-                        .filter(slot => 
-                          slot.time_slot.toLowerCase().includes(timeInSearchTerm.toLowerCase())
-                        )
-                        .map(slot => (
-                          <div
-                            key={slot.time_id}
-                            className="px-3 py-2 hover:bg-blue-50 cursor-pointer"
-                            onClick={() => {
-                              setFormData(prev => ({ ...prev, time: slot.time_id.toString() }));
-                              setTimeInSearchTerm(slot.time_slot);
-                              setShowTimeInDropdown(false);
-                              if (errors.time) {
-                                setErrors(prev => ({ ...prev, time: '' }));
-                              }
-                            }}
-                          >
-                            {slot.time_slot}
-                          </div>
-                        ))
-                      }
-                      {getFilteredTimeSlots().filter(slot => 
-                        slot.time_slot.toLowerCase().includes(timeInSearchTerm.toLowerCase())
-                      ).length === 0 && (
-                        <div className="px-3 py-2 text-gray-500">No time slots available</div>
-                      )}
-                    </div>
-                  )}
+                  <input
+                    type="text"
+                    value={timeInSearchTerm}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                    readOnly
+                  />
                   {errors.time && <p className="text-red-500 text-sm mt-1">{errors.time}</p>}
                 </div>
-                <div className="relative">
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Time Out <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={timeOutSearchTerm}
-                      onChange={(e) => {
-                        setTimeOutSearchTerm(e.target.value);
-                        setShowTimeOutDropdown(true);
-                      }}
-                      onFocus={() => setShowTimeOutDropdown(true)}
-                      className={`w-full px-3 py-2 pr-10 border rounded-md focus:outline-none focus:ring-2 ${
-                        errors.time_in ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
-                      }`}
-                      placeholder="Search and select time"
-                      required
-                    />
-                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-                  </div>
-                  {showTimeOutDropdown && (
-                    <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
-                      {getFilteredTimeSlots()
-                        .filter(slot => 
-                          slot.time_slot.toLowerCase().includes(timeOutSearchTerm.toLowerCase())
-                        )
-                        .map(slot => (
-                          <div
-                            key={slot.time_id}
-                            className="px-3 py-2 hover:bg-blue-50 cursor-pointer"
-                            onClick={() => {
-                              setFormData(prev => ({ ...prev, time_in: slot.time_id.toString() }));
-                              setTimeOutSearchTerm(slot.time_slot);
-                              setShowTimeOutDropdown(false);
-                              if (errors.time_in) {
-                                setErrors(prev => ({ ...prev, time_in: '' }));
-                              }
-                            }}
-                          >
-                            {slot.time_slot}
-                          </div>
-                        ))
-                      }
-                      {getFilteredTimeSlots().filter(slot => 
-                        slot.time_slot.toLowerCase().includes(timeOutSearchTerm.toLowerCase())
-                      ).length === 0 && (
-                        <div className="px-3 py-2 text-gray-500">No time slots available</div>
-                      )}
-                    </div>
-                  )}
+                  <input
+                    type="text"
+                    value={timeOutSearchTerm}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50"
+                    readOnly
+                  />
                   {errors.time_in && <p className="text-red-500 text-sm mt-1">{errors.time_in}</p>}
                 </div>
                 <div>
@@ -1829,27 +1829,18 @@ export default function NewPatientRegistration() {
                   <button
                     type="button"
                     onClick={() => handleSubmit('Save')}
-                    className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-lg transition-all duration-200"
+                    disabled={isSaved}
+                    className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg transition-all duration-200"
                   >
                     <Check className="h-5 w-5" />
-                    <span>SAVE</span>
+                    <span>{isSaved ? 'SAVED' : 'SAVE'}</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      // PHP logic: Print enabled only when due amount is 0
-                      if (!isPrintEnabled()) {
-                        if (toast && typeof toast.warning === 'function') {
-                          toast.warning('Please complete payment before printing receipt');
-                        }
-                        return;
-                      }
-                      
-                      handleSubmit('Save_Print');
-                    }}
-                    disabled={!isPrintEnabled()}
+                    onClick={() => handleSubmit('Print')}
+                    disabled={!isSaved}
                     className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg transition-all duration-200"
-                    title={isPrintEnabled() ? 'Save and Print Receipt' : 'Complete payment to enable printing'}
+                    title={isSaved ? 'Print Receipt' : 'Save patient first to enable printing'}
                   >
                     <FileText className="h-5 w-5" />
                     <span>PRINT</span>
