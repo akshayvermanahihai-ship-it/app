@@ -162,7 +162,7 @@ export default function DoctorScanReport() {
             <td style="text-align:center; padding:3px;">${index + 1}</td>
             <td style="padding:3px;">${item.doctor_name || 'Unknown'}</td>
             <td style="text-align:right; padding:3px;">${item.report_count || 0}</td>
-            <td style="text-align:right; padding:3px;">₹${parseFloat(String(item.total_amount || 0)).toFixed(2)}</td>
+            <td style="text-align:right; padding:3px;">${parseFloat(String(item.total_amount || 0)).toFixed(2)}</td>
             <td colspan="4"></td>
           </tr>
         `;
@@ -176,7 +176,7 @@ export default function DoctorScanReport() {
             <td></td>
             <td style="background-color:#FFFF99; font-weight:bold; padding:5px;">Total</td>
             <td style="background-color:#FFFF99; font-weight:bold; text-align:right; padding:5px;">${doctorTotalReports}</td>
-            <td style="background-color:#FFFF99; font-weight:bold; text-align:right; padding:5px;">₹${doctorTotalAmount.toFixed(2)}</td>
+            <td style="background-color:#FFFF99; font-weight:bold; text-align:right; padding:5px;">${doctorTotalAmount.toFixed(2)}</td>
             <td colspan="4"></td>
           </tr>
           <tr><td colspan="8" style="height:15px;"></td></tr>
@@ -203,8 +203,8 @@ export default function DoctorScanReport() {
             <td style="padding:3px;">${item.head_name || 'Unknown'}</td>
             <td style="text-align:right; padding:3px;">${item.doctor_count || 0}</td>
             <td style="text-align:right; padding:3px;">${item.report_count || 0}</td>
-            <td style="text-align:right; padding:3px;">₹${ratePerReport.toFixed(2)}</td>
-            <td style="text-align:right; padding:3px;">₹${parseFloat(String(item.total_amount || 0)).toFixed(2)}</td>
+            <td style="text-align:right; padding:3px;">${ratePerReport.toFixed(2)}</td>
+            <td style="text-align:right; padding:3px;">${parseFloat(String(item.total_amount || 0)).toFixed(2)}</td>
             <td colspan="2"></td>
           </tr>
         `;
@@ -218,10 +218,10 @@ export default function DoctorScanReport() {
           <tr>
             <td></td>
             <td style="background-color:#FFFF99; font-weight:bold; padding:5px;">Total</td>
-            <td style="background-color:#FFFF99; font-weight:bold; text-align:right; padding:5px;">${headTotalDoctors}</td>
+            <td style="background-color:#FFFF99; font-weight:bold; text-align:right; padding:5px;"></td>
             <td style="background-color:#FFFF99; font-weight:bold; text-align:right; padding:5px;">${headTotalReports}</td>
             <td style="background-color:#FFFF99; padding:5px;"></td>
-            <td style="background-color:#FFFF99; font-weight:bold; text-align:right; padding:5px;">₹${headTotalAmount.toFixed(2)}</td>
+            <td style="background-color:#FFFF99; font-weight:bold; text-align:right; padding:5px;">${headTotalAmount.toFixed(2)}</td>
             <td colspan="2"></td>
           </tr>
           <tr><td colspan="8" style="height:15px;"></td></tr>
@@ -250,7 +250,7 @@ export default function DoctorScanReport() {
             <td style="padding:3px;">${row.patient_cro || ''}</td>
             <td style="padding:3px;">${row.scan_names || ''}</td>
             <td style="padding:3px;">${row.scan_head_names || ''}</td>
-            <td style="text-align:right; padding:3px;">₹${parseFloat(String(row.total_amount || 0)).toFixed(2)}</td>
+            <td style="text-align:right; padding:3px;">${parseFloat(String(row.total_amount || 0)).toFixed(2)}</td>
             <td style="padding:3px;">${row.report_date || ''}</td>
           </tr>
         `;
