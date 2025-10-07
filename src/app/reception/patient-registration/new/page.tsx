@@ -737,6 +737,20 @@ export default function NewPatientRegistration() {
   };
 
   const handleSubmit = async (action: string) => {
+    if (action === 'Print') {
+      // Print action - just print using saved data, no API call
+      if (savedPatientData) {
+        printReceipt(savedPatientData);
+        if (toast && typeof toast.info === 'function') {
+          toast.info('Receipt printed successfully!');
+        }
+        setTimeout(() => {
+          window.location.href = '/reception/patient-registration';
+        }, 2000);
+      }
+      return;
+    }
+
     try {
       // Prepare data in the format expected by the API
       const submitData = {
@@ -785,22 +799,11 @@ export default function NewPatientRegistration() {
         const result = await response.json();
         const cro = result.data?.cro || (isEditMode ? 'Updated' : 'Registered');
         
-        if (action === 'Save') {
-          // Save action - enable print button
-          setIsSaved(true);
-          setSavedPatientData(result.data);
-          if (toast && typeof toast.success === 'function') {
-            toast.success(`Patient ${isEditMode ? 'updated' : 'registered'} successfully! CRO: ${cro}`);
-          }
-        } else if (action === 'Print') {
-          // Print action - print and redirect
-          printReceipt(savedPatientData || result.data);
-          if (toast && typeof toast.info === 'function') {
-            toast.info('Receipt printed successfully!');
-          }
-          setTimeout(() => {
-            window.location.href = '/reception/patient-registration';
-          }, 2000);
+        // Save action - enable print button
+        setIsSaved(true);
+        setSavedPatientData(result.data);
+        if (toast && typeof toast.success === 'function') {
+          toast.success(`Patient ${isEditMode ? 'updated' : 'registered'} successfully! CRO: ${cro}`);
         }
       } else {
         const errorData = await response.json().catch(() => ({}));
