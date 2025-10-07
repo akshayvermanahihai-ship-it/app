@@ -83,16 +83,25 @@ export default function NursingDetail() {
   const formatDateForInput = (dateString: string) => {
     if (!dateString || dateString === '0000-00-00') return '';
     try {
+      // Handle ISO date strings (e.g., "2025-10-07T04:00:00.000Z")
+      if (dateString.includes('T') && dateString.includes('Z')) {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '';
+        return date.toISOString().split('T')[0];
+      }
+      
+      // Handle other date formats
       if (dateString.includes('-') && dateString.split('-').length === 3) {
         const parts = dateString.split('-');
         if (parts[0].length === 4) {
           // Already YYYY-MM-DD format
-          return dateString;
+          return dateString.split('T')[0]; // Remove time part if present
         } else {
           // DD-MM-YYYY format, convert to YYYY-MM-DD
           return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         }
       }
+      
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return '';
       return date.toISOString().split('T')[0];
