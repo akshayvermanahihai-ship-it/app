@@ -223,7 +223,7 @@ export default function CTScanDoctors() {
                   <tr key={doctor.d_id} className="hover:bg-blue-50 transition-colors border-b border-gray-200">
                     <td className="px-6 py-4 text-sm text-gray-900 border-r border-gray-200 font-medium">{index + 1}</td>
                     <td className="px-6 py-4 text-sm font-semibold text-gray-900 border-r border-gray-200">
-                      Dr. {doctor.doctor_name}
+                      {doctor.doctor_name}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center space-x-3">

@@ -122,196 +122,156 @@ export default function DoctorScanReport() {
         return;
       }
 
-      const XLSX = await import('xlsx');
       const dateRange = filters.from_date && filters.to_date ? `${filters.from_date} to ${filters.to_date}` : 'All Dates';
       const doctorFilter = filters.doctor_id ? doctors.find(d => d.d_id === parseInt(filters.doctor_id))?.doctor_name || 'Unknown' : 'All Doctors';
       
-      const wb = XLSX.utils.book_new();
-      
-      // Header data with proper spacing
-      const headerData = [
-        ['', '', '', 'VARAHA SDC', '', '', '', ''],
-        ['', '', '', 'DOCTOR SCAN REPORT', '', '', '', ''],
-        ['', '', '', `Date Range: ${dateRange}`, '', '', '', ''],
-        ['', '', '', `Doctor Filter: ${doctorFilter}`, '', '', '', ''],
-        ['', '', '', '', '', '', '', ''],
-        ['', '', '', 'REPORTS BY DOCTOR', '', '', '', ''],
-        ['Sr.No', 'Doctor', 'Patient', 'Amount', '', '', '', '']
-      ];
+      let html = `
+        <html>
+        <meta http-equiv="Content-Type" content="text/html; charset=Windows-1252">
+        <body>
+        <table border="1" style="border-collapse: collapse; width: 100%;">
+          <tr>
+            <th colspan="8" style="background-color:#2F75B5; color:white; text-align:center; padding:8px;">VARAHA SDC</th>
+          </tr>
+          <tr>
+            <th colspan="8" style="background-color:#2F75B5; color:white; text-align:center; padding:8px;">DOCTOR SCAN REPORT</th>
+          </tr>
+          <tr>
+            <th colspan="8" style="background-color:#FFEA00; color:black; text-align:center; padding:8px;">Date Range: ${dateRange}</th>
+          </tr>
+          <tr>
+            <th colspan="8" style="background-color:#FFEA00; color:black; text-align:center; padding:8px;">Doctor Filter: ${doctorFilter}</th>
+          </tr>
+          <tr><td colspan="8" style="height:10px;"></td></tr>
+          <tr>
+            <th colspan="8" style="background-color:#2F75B5; color:white; text-align:center; padding:8px;">REPORTS BY DOCTOR</th>
+          </tr>
+          <tr>
+            <th style="background-color:#D3D3D3; padding:5px;">Sr.No</th>
+            <th style="background-color:#D3D3D3; padding:5px;">Doctor</th>
+            <th style="background-color:#D3D3D3; padding:5px;">Reports</th>
+            <th style="background-color:#D3D3D3; padding:5px;">Amount</th>
+            <th colspan="4"></th>
+          </tr>
+      `;
       
       // Doctor summary data
-      const doctorData = (summary?.by_doctor || []).map((item, index) => [
-        index + 1,
-        item.doctor_name || 'Unknown',
-        item.report_count || 0,
-        parseFloat(String(item.total_amount || 0)).toFixed(2),
-        '', '', '', ''
-      ]);
-      
-      const doctorTotal = [
-        '',
-        'Total',
-        (summary?.by_doctor || []).reduce((sum, item) => sum + (item.report_count || 0), 0),
-        (summary?.by_doctor || []).reduce((sum, item) => sum + parseFloat(String(item.total_amount || 0)), 0).toFixed(2),
-        '', '', '', ''
-      ];
-      
-      // Scan head data
-      const scanHeadHeader = [
-        ['', '', '', '', '', '', '', ''],
-        ['', '', '', 'REPORTS BY SCAN HEAD', '', '', '', ''],
-        ['Sr.No', 'Scan Head', 'Doctors', 'Reports', 'Rate/Report', 'Amount', '', '']
-      ];
-      
-      const scanHeadData = (summary?.by_head || []).map((item, index) => {
-        const ratePerReport = (item.report_count || 0) > 0 ? (item.total_amount || 0) / (item.report_count || 0) : 0;
-        return [
-          index + 1,
-          item.head_name || 'Unknown',
-          item.doctor_count || 0,
-          item.report_count || 0,
-          ratePerReport.toFixed(2),
-          parseFloat(String(item.total_amount || 0)).toFixed(2),
-          '', ''
-        ];
+      (summary?.by_doctor || []).forEach((item, index) => {
+        html += `
+          <tr>
+            <td style="text-align:center; padding:3px;">${index + 1}</td>
+            <td style="padding:3px;">${item.doctor_name || 'Unknown'}</td>
+            <td style="text-align:right; padding:3px;">${item.report_count || 0}</td>
+            <td style="text-align:right; padding:3px;">₹${parseFloat(String(item.total_amount || 0)).toFixed(2)}</td>
+            <td colspan="4"></td>
+          </tr>
+        `;
       });
       
-      const totalAmount = (summary?.by_head || []).reduce((sum, item) => sum + (parseFloat(String(item.total_amount)) || 0), 0);
-      const totalReports = (summary?.by_head || []).reduce((sum, item) => sum + (item.report_count || 0), 0);
+      const doctorTotalReports = (summary?.by_doctor || []).reduce((sum, item) => sum + (item.report_count || 0), 0);
+      const doctorTotalAmount = (summary?.by_doctor || []).reduce((sum, item) => sum + parseFloat(String(item.total_amount || 0)), 0);
       
-      const scanHeadTotal = [
-        '',
-        'Total',
-        (summary?.by_head || []).reduce((sum, item) => sum + (item.doctor_count || 0), 0),
-        totalReports,
-        '',
-        totalAmount.toFixed(2),
-        '', ''
-      ];
+      html += `
+          <tr>
+            <td></td>
+            <td style="background-color:#FFFF99; font-weight:bold; padding:5px;">Total</td>
+            <td style="background-color:#FFFF99; font-weight:bold; text-align:right; padding:5px;">${doctorTotalReports}</td>
+            <td style="background-color:#FFFF99; font-weight:bold; text-align:right; padding:5px;">₹${doctorTotalAmount.toFixed(2)}</td>
+            <td colspan="4"></td>
+          </tr>
+          <tr><td colspan="8" style="height:15px;"></td></tr>
+          <tr>
+            <th colspan="8" style="background-color:#2F75B5; color:white; text-align:center; padding:8px;">REPORTS BY SCAN HEAD</th>
+          </tr>
+          <tr>
+            <th style="background-color:#D3D3D3; padding:5px;">Sr.No</th>
+            <th style="background-color:#D3D3D3; padding:5px;">Scan Head</th>
+            <th style="background-color:#D3D3D3; padding:5px;">Doctors</th>
+            <th style="background-color:#D3D3D3; padding:5px;">Reports</th>
+            <th style="background-color:#D3D3D3; padding:5px;">Rate/Report</th>
+            <th style="background-color:#D3D3D3; padding:5px;">Amount</th>
+            <th colspan="2"></th>
+          </tr>
+      `;
+      
+      // Scan head data
+      (summary?.by_head || []).forEach((item, index) => {
+        const ratePerReport = (item.report_count || 0) > 0 ? (item.total_amount || 0) / (item.report_count || 0) : 0;
+        html += `
+          <tr>
+            <td style="text-align:center; padding:3px;">${index + 1}</td>
+            <td style="padding:3px;">${item.head_name || 'Unknown'}</td>
+            <td style="text-align:right; padding:3px;">${item.doctor_count || 0}</td>
+            <td style="text-align:right; padding:3px;">${item.report_count || 0}</td>
+            <td style="text-align:right; padding:3px;">₹${ratePerReport.toFixed(2)}</td>
+            <td style="text-align:right; padding:3px;">₹${parseFloat(String(item.total_amount || 0)).toFixed(2)}</td>
+            <td colspan="2"></td>
+          </tr>
+        `;
+      });
+      
+      const headTotalDoctors = (summary?.by_head || []).reduce((sum, item) => sum + (item.doctor_count || 0), 0);
+      const headTotalReports = (summary?.by_head || []).reduce((sum, item) => sum + (item.report_count || 0), 0);
+      const headTotalAmount = (summary?.by_head || []).reduce((sum, item) => sum + (parseFloat(String(item.total_amount)) || 0), 0);
+      
+      html += `
+          <tr>
+            <td></td>
+            <td style="background-color:#FFFF99; font-weight:bold; padding:5px;">Total</td>
+            <td style="background-color:#FFFF99; font-weight:bold; text-align:right; padding:5px;">${headTotalDoctors}</td>
+            <td style="background-color:#FFFF99; font-weight:bold; text-align:right; padding:5px;">${headTotalReports}</td>
+            <td style="background-color:#FFFF99; padding:5px;"></td>
+            <td style="background-color:#FFFF99; font-weight:bold; text-align:right; padding:5px;">₹${headTotalAmount.toFixed(2)}</td>
+            <td colspan="2"></td>
+          </tr>
+          <tr><td colspan="8" style="height:15px;"></td></tr>
+          <tr>
+            <th colspan="8" style="background-color:#2F75B5; color:white; text-align:center; padding:8px;">DETAILED REPORTS</th>
+          </tr>
+          <tr>
+            <th style="background-color:#D3D3D3; padding:5px;">S.No</th>
+            <th style="background-color:#D3D3D3; padding:5px;">Doctor Name</th>
+            <th style="background-color:#D3D3D3; padding:5px;">Patient Name</th>
+            <th style="background-color:#D3D3D3; padding:5px;">CRO</th>
+            <th style="background-color:#D3D3D3; padding:5px;">Scan Types</th>
+            <th style="background-color:#D3D3D3; padding:5px;">Scan Heads</th>
+            <th style="background-color:#D3D3D3; padding:5px;">Amount</th>
+            <th style="background-color:#D3D3D3; padding:5px;">Report Date</th>
+          </tr>
+      `;
       
       // Detailed reports
-      const detailHeader = [
-        ['', '', '', '', '', '', '', ''],
-        ['', '', '', 'DETAILED REPORTS', '', '', '', ''],
-        ['S.No', 'Doctor Name', 'Patient Name', 'CRO', 'Scan Types', 'Scan Heads', 'Amount', 'Report Date']
-      ];
+      reports.forEach((row, index) => {
+        html += `
+          <tr>
+            <td style="text-align:center; padding:3px;">${index + 1}</td>
+            <td style="padding:3px;">${row.doctor_name || ''}</td>
+            <td style="padding:3px;">${row.patient_name || ''}</td>
+            <td style="padding:3px;">${row.patient_cro || ''}</td>
+            <td style="padding:3px;">${row.scan_names || ''}</td>
+            <td style="padding:3px;">${row.scan_head_names || ''}</td>
+            <td style="text-align:right; padding:3px;">₹${parseFloat(String(row.total_amount || 0)).toFixed(2)}</td>
+            <td style="padding:3px;">${row.report_date || ''}</td>
+          </tr>
+        `;
+      });
       
-      const detailData = reports.map((row, index) => [
-        index + 1,
-        row.doctor_name || '',
-        row.patient_name || '',
-        row.patient_cro || '',
-        row.scan_names || '',
-        row.scan_head_names || '',
-        parseFloat(String(row.total_amount || 0)).toFixed(2),
-        row.report_date || ''
-      ]);
+      html += `
+        </table>
+        </body>
+        </html>
+      `;
       
-      // Combine all data
-      const allData = [
-        ...headerData,
-        ...doctorData,
-        doctorTotal,
-        ...scanHeadHeader,
-        ...scanHeadData,
-        scanHeadTotal,
-        ...detailHeader,
-        ...detailData
-      ];
-      
-      const ws = XLSX.utils.aoa_to_sheet(allData);
-      
-      // Auto-fit column widths based on content
-      const colWidths = [];
-      for (let C = 0; C < 8; C++) {
-        let maxWidth = 10;
-        for (let R = 0; R < allData.length; R++) {
-          if (allData[R] && allData[R][C]) {
-            const cellLength = String(allData[R][C]).length;
-            if (cellLength > maxWidth) maxWidth = cellLength;
-          }
-        }
-        colWidths.push({ width: Math.min(maxWidth + 2, 50) });
-      }
-      ws['!cols'] = colWidths;
-      
-      // Style cells
-      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-      for (let R = range.s.r; R <= range.e.r; ++R) {
-        for (let C = range.s.c; C <= range.e.c; ++C) {
-          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-          if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: '' };
-          
-          // Header styling
-          if (R === 0 || R === 1 || (allData[R] && (allData[R][C] === 'VARAHA SDC' || allData[R][C] === 'DOCTOR SCAN REPORT' || String(allData[R][C] || '').includes('REPORTS BY')))) {
-            ws[cellAddress].s = {
-              font: { bold: true, size: R < 2 ? 16 : 14 },
-              alignment: { horizontal: 'center', vertical: 'center' },
-              fill: { fgColor: { rgb: 'E6E6FA' } }
-            };
-          }
-          // Table headers
-          else if (allData[R] && (allData[R][C] === 'Sr.No' || allData[R][C] === 'Doctor' || allData[R][C] === 'S.No' || allData[R][C] === 'Scan Head')) {
-            ws[cellAddress].s = {
-              font: { bold: true },
-              alignment: { horizontal: 'center', vertical: 'center' },
-              fill: { fgColor: { rgb: 'D3D3D3' } },
-              border: {
-                top: { style: 'thin' },
-                bottom: { style: 'thin' },
-                left: { style: 'thin' },
-                right: { style: 'thin' }
-              }
-            };
-          }
-          // Total rows
-          else if (allData[R] && allData[R][C] === 'Total') {
-            ws[cellAddress].s = {
-              font: { bold: true },
-              alignment: { horizontal: 'center', vertical: 'center' },
-              fill: { fgColor: { rgb: 'FFFF99' } },
-              border: {
-                top: { style: 'medium' },
-                bottom: { style: 'thin' },
-                left: { style: 'thin' },
-                right: { style: 'thin' }
-              }
-            };
-          }
-          // Data cells - add solid borders to all cells
-          else {
-            ws[cellAddress].s = {
-              alignment: {
-                horizontal: C === 0 ? 'center' : (C >= 2 && C !== 1 && C !== 4 ? 'right' : 'left'),
-                vertical: 'center'
-              },
-              border: {
-                top: { style: 'thin', color: { rgb: '000000' } },
-                bottom: { style: 'thin', color: { rgb: '000000' } },
-                left: { style: 'thin', color: { rgb: '000000' } },
-                right: { style: 'thin', color: { rgb: '000000' } }
-              }
-            };
-          }
-        }
-      }
-      
-      // Merge header cells
-      ws['!merges'] = [
-        { s: { r: 0, c: 3 }, e: { r: 0, c: 4 } }, // VARAHA SDC
-        { s: { r: 1, c: 3 }, e: { r: 1, c: 5 } }, // DOCTOR SCAN REPORT
-      ];
-      
-      XLSX.utils.book_append_sheet(wb, ws, 'Doctor Scan Report');
-      
-      wb.Props = {
-        Title: 'Doctor Scan Report',
-        Subject: 'Medical Scan Report',
-        Author: 'Varaha SDC',
-        CreatedDate: new Date()
-      };
-      
-      XLSX.writeFile(wb, 'doctor-scan-report.xlsx');
+      // Create and download file
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'doctor-scan-report.xls';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
       toast.success('Report downloaded successfully');
     } catch (error) {
       console.error('Download error:', error);
@@ -526,7 +486,7 @@ export default function DoctorScanReport() {
                         <tr className="border-t-2 border-gray-400 bg-gray-100 font-bold">
                           <td className="px-4 py-2"></td>
                           <td className="px-4 py-2">Total</td>
-                          <td className="px-4 py-2">{summary.by_head.reduce((sum, item) => sum + (item.doctor_count || 0), 0)}</td>
+                                                   <td className="px-4 py-2"></td>
                           <td className="px-4 py-2">{summary.by_head.reduce((sum, item) => sum + (item.report_count || 0), 0)}</td>
                              <td className="px-4 py-2"></td>
                           <td className="px-4 py-2">₹{summary.by_head.reduce((sum, item) => sum + (parseFloat(String(item.total_amount)) || 0), 0).toFixed(2)}</td>

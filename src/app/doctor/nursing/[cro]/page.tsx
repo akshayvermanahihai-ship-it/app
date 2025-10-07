@@ -142,7 +142,7 @@ export default function NursingDetail() {
         setNursingData(data.data);
         const patient = data.data.patient;
         setSelectedDoctor(patient.ct_scan_doctor_id || 0);
-        setCTScanReportDate(formatDateForInput(patient.ct_scan_report_date || ''));
+        setCTScanReportDate(formatDateForInput(patient.n_patient_ct_report_date || ''));
         setCTScan(patient.n_patient_ct || 'No');
         setCTReportDate(formatDateForInput(patient.n_patient_ct_report_date || ''));
         setCTRemark(patient.n_patient_ct_remark || '');
@@ -473,7 +473,7 @@ export default function NursingDetail() {
               className="flex items-center justify-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
               <Save className="h-4 w-4" />
-              <span>{saving ? 'Saving...' : 'Save Nursing Data'}</span>
+              <span>{saving ? 'Saving...' : 'Save Data'}</span>
             </button>
             
             <button
