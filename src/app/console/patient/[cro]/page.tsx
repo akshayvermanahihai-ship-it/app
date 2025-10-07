@@ -74,6 +74,25 @@ export default function ConsolePatient({ params }: { params: Promise<{ cro: stri
       if (response.ok) {
         const data = await response.json();
         setPatientData(data.data);
+        
+        // Bind console data to form if it exists
+        if (data.data.console) {
+          const console = data.data.console;
+          setFormData({
+            examination_id: console.examination_id || '',
+            number_scan: console.number_scan || '',
+            number_film: console.number_films || '',
+            number_contrast: console.number_contrast || '',
+            technician_name: console.technician_name || '',
+            nursing_name: console.nursing_name || '',
+            issue_cd: console.issue_cd || 'NO',
+            remark: console.remark || '',
+            console_date: new Date().toLocaleDateString('en-CA'),
+            console_time: new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Calcutta', hour12: false })
+          });
+          setStartTime(console.start_time || '');
+          setStopTime(console.stop_time || '');
+        }
       } else {
         const errorData = await response.json().catch(() => ({}));
         console.error('Console patient API error:', errorData);
@@ -127,10 +146,7 @@ export default function ConsolePatient({ params }: { params: Promise<{ cro: stri
         return;
       }
 
-      if (!startTime || !stopTime) {
-        toast.error('Please set start and stop times');
-        return;
-      }
+
 
       // Map action to status
       let status = action;
@@ -153,12 +169,7 @@ export default function ConsolePatient({ params }: { params: Promise<{ cro: stri
         
         if (action === 'Complete') {
           toast.success('Console completed successfully!');
-          // Generate final receipt
-          generateFinalReceipt();
-          // Redirect after showing receipt
-          setTimeout(() => {
-            router.push('/console');
-          }, 2000);
+          router.push('/console');
         } else if (action === 'Pending') {
           toast.success('Console marked as pending');
           router.push('/console');

@@ -424,8 +424,9 @@ export default function DoctorScanReport() {
                       <th className="px-4 py-2 text-left">Scan Head</th>
                       <th className="px-4 py-2 text-left">Doctors</th>
                       <th className="px-4 py-2 text-left">Reports</th>
+                       <th className="px-4 py-2 text-left">Rate/Report</th>
                       <th className="px-4 py-2 text-left">Amount</th>
-                      <th className="px-4 py-2 text-left">Rate per report</th>
+                     
                     </tr>
                   </thead>
                   <tbody>
@@ -439,8 +440,9 @@ export default function DoctorScanReport() {
                               <td className="px-4 py-2">{item.head_name || 'Unknown'}</td>
                               <td className="px-4 py-2">{item.doctor_count || 0}</td>
                               <td className="px-4 py-2">{item.report_count || 0}</td>
-                              <td className="px-4 py-2">₹{(item.total_amount || 0).toLocaleString()}</td>
                               <td className="px-4 py-2">₹{ratePerReport.toFixed(2)}</td>
+                              <td className="px-4 py-2">₹{(item.total_amount || 0).toLocaleString()}</td>
+                       
                             </tr>
                           );
                         })}
@@ -449,12 +451,9 @@ export default function DoctorScanReport() {
                           <td className="px-4 py-2">Total</td>
                           <td className="px-4 py-2">{summary.by_head.reduce((sum, item) => sum + (item.doctor_count || 0), 0)}</td>
                           <td className="px-4 py-2">{summary.by_head.reduce((sum, item) => sum + (item.report_count || 0), 0)}</td>
-                          <td className="px-4 py-2">₹{summary.by_head.reduce((sum, item) => sum + (item.total_amount || 0), 0).toLocaleString()}</td>
-                          <td className="px-4 py-2">₹{(() => {
-                            const totalAmount = summary.by_head.reduce((sum, item) => sum + (item.total_amount || 0), 0);
-                            const totalReports = summary.by_head.reduce((sum, item) => sum + (item.report_count || 0), 0);
-                            return totalReports > 0 ? (totalAmount / totalReports).toFixed(2) : '0.00';
-                          })()}</td>
+                             <td className="px-4 py-2"></td>
+                          <td className="px-4 py-2">₹{summary.by_head.reduce((sum, item) => sum + (parseFloat(String(item.total_amount)) || 0), 0).toLocaleString()}</td>
+                          
                         </tr>
                       </>
                     ) : (
