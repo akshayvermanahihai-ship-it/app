@@ -293,24 +293,24 @@ export default function CTScanDoctorList() {
                     </td>
                     <td className="px-4 py-4 text-center border-r border-gray-200">
                       <span className={`px-3 py-1 text-xs font-bold rounded-full ${
-                        item.n_patient_ct === 'yes' 
+                        item.n_patient_ct?.toLowerCase() === 'yes' 
                           ? 'bg-green-100 text-green-800' 
-                          : item.n_patient_ct === 'no'
+                          : item.n_patient_ct?.toLowerCase() === 'no'
                           ? 'bg-red-100 text-red-800'
                           : 'bg-gray-100 text-gray-800'
                       }`}>
-                        {item.n_patient_ct === 'yes' ? 'Completed' : item.n_patient_ct === 'no' ? 'Pending' : 'Not Set'}
+                        {item.n_patient_ct?.toLowerCase() === 'yes' ? 'Completed' : item.n_patient_ct?.toLowerCase() === 'no' ? 'Pending' : 'Not Set'}
                       </span>
                     </td>
                     <td className="px-4 py-4 text-center border-r border-gray-200">
                       <span className={`px-3 py-1 text-xs font-bold rounded-full ${
-                        item.n_patient_x_ray === 'yes' 
+                        item.n_patient_x_ray?.toLowerCase() === 'yes' 
                           ? 'bg-green-100 text-green-800' 
-                          : item.n_patient_x_ray === 'no'
+                          : item.n_patient_x_ray?.toLowerCase() === 'no'
                           ? 'bg-red-100 text-red-800'
                           : 'bg-gray-100 text-gray-800'
                       }`}>
-                        {item.n_patient_x_ray === 'yes' ? 'Completed' : item.n_patient_x_ray === 'no' ? 'Pending' : 'Not Set'}
+                        {item.n_patient_x_ray?.toLowerCase() === 'yes' ? 'Completed' : item.n_patient_x_ray?.toLowerCase() === 'no' ? 'Pending' : 'Not Set'}
                       </span>
                     </td>
                     <td className="px-4 py-4 text-center">
