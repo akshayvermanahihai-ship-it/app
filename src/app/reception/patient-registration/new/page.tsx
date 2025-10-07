@@ -137,6 +137,43 @@ export default function NewPatientRegistration() {
     };
   }, []);
 
+  // Auto-select current time when timeSlots are loaded and appointment date is today
+  useEffect(() => {
+    if (timeSlots.length > 0 && !isEditMode && !formData.time) {
+      const today = new Date();
+      const appointmentDate = new Date(formData.appoint_date);
+      const isToday = appointmentDate.toDateString() === today.toDateString();
+      
+      if (isToday) {
+        autoSelectCurrentTime();
+      }
+    }
+  }, [timeSlots, formData.appoint_date]);
+
+  // Auto-calculate time out when estimated time changes
+  useEffect(() => {
+    if (formData.time && formData.est_time && parseInt(formData.est_time) > 0) {
+      const timeSlot = timeSlots.find(slot => slot.time_id.toString() === formData.time);
+      if (timeSlot) {
+        const timeMatch = timeSlot.time_slot.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+        if (timeMatch) {
+          let hour = parseInt(timeMatch[1]);
+          const minute = parseInt(timeMatch[2]);
+          const period = timeMatch[3].toUpperCase();
+          
+          if (period === 'PM' && hour !== 12) {
+            hour += 12;
+          } else if (period === 'AM' && hour === 12) {
+            hour = 0;
+          }
+          
+          const time24 = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+          calculateTimeOut(time24, parseInt(formData.est_time));
+        }
+      }
+    }
+  }, [formData.est_time, formData.time, timeSlots]);
+
   const fetchHospitals = async () => {
     try {
       const response = await fetch('https://varahasdc.co.in/api/reception/hospitals');
@@ -316,44 +353,43 @@ export default function NewPatientRegistration() {
     return `${hours12.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`;
   };
 
-  // Generate minute-by-minute time slots for the day
-  const generateTimeSlots = () => {
-    const slots = [];
+  // Filter time slots based on appointment date and current time
+  const getFilteredTimeSlots = () => {
     const now = new Date();
     const selectedDate = new Date(formData.appoint_date);
     const isToday = selectedDate.toDateString() === now.toDateString();
     
-    let startHour = 7;
-    let startMinute = 0;
+    if (!isToday) {
+      // For future dates, return all time slots
+      return timeSlots;
+    }
     
-    // If appointment is for today, start from current time
-    if (isToday) {
-      startHour = now.getHours();
-      startMinute = now.getMinutes();
+    // For today, filter slots to show only current time and later
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTimeInMinutes = currentHour * 60 + currentMinute;
+    
+    return timeSlots.filter(slot => {
+      // Extract time from slot.time_slot (format: "HH:MM AM/PM")
+      const timeMatch = slot.time_slot.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+      if (!timeMatch) return false;
       
-      // If current time is before 7 AM, start from 7 AM
-      if (startHour < 7) {
-        startHour = 7;
-        startMinute = 0;
+      let hour = parseInt(timeMatch[1]);
+      const minute = parseInt(timeMatch[2]);
+      const period = timeMatch[3].toUpperCase();
+      
+      // Convert to 24-hour format
+      if (period === 'PM' && hour !== 12) {
+        hour += 12;
+      } else if (period === 'AM' && hour === 12) {
+        hour = 0;
       }
-      // If current time is after 6 PM, start from 7 AM next day
-      if (startHour >= 18) {
-        startHour = 7;
-        startMinute = 0;
-      }
-    }
-    
-    // Generate slots from start time to 6 PM
-    for (let hour = startHour; hour < 18; hour++) {
-      const minuteStart = (hour === startHour && isToday) ? startMinute : 0;
-      for (let minute = minuteStart; minute < 60; minute++) {
-        const time24 = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        const timeAMPM = formatTimeToAMPM(time24);
-        slots.push({ time24, timeAMPM });
-      }
-    }
-    
-    return slots;
+      
+      const slotTimeInMinutes = hour * 60 + minute;
+      
+      // Show slots that are current time or later
+      return slotTimeInMinutes >= currentTimeInMinutes;
+    });
   };
 
   const calculateTimeOut = (timeIn: string, estimatedMinutes: number) => {
@@ -383,21 +419,55 @@ export default function NewPatientRegistration() {
     return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
   };
 
+  // Auto-select current time for today's appointment
+  const autoSelectCurrentTime = () => {
+    const today = new Date();
+    const currentHour = today.getHours();
+    const currentMinute = today.getMinutes();
+    const currentTimeInMinutes = currentHour * 60 + currentMinute;
+    
+    // Find the closest available time slot that matches or is after current time
+    const availableSlot = timeSlots.find(slot => {
+      const timeMatch = slot.time_slot.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+      if (!timeMatch) return false;
+      
+      let hour = parseInt(timeMatch[1]);
+      const minute = parseInt(timeMatch[2]);
+      const period = timeMatch[3].toUpperCase();
+      
+      if (period === 'PM' && hour !== 12) {
+        hour += 12;
+      } else if (period === 'AM' && hour === 12) {
+        hour = 0;
+      }
+      
+      const slotTimeInMinutes = hour * 60 + minute;
+      return slotTimeInMinutes >= currentTimeInMinutes;
+    });
+    
+    if (availableSlot) {
+      setFormData(prev => ({ ...prev, time: availableSlot.time_id.toString() }));
+      setTimeInSearchTerm(availableSlot.time_slot);
+    }
+  };
+
   // Handle appointment date change
   const handleAppointmentDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Always set current time as default for Time In
-    const currentTime = getCurrentTime();
+    // Clear time selections when date changes
+    setFormData(prev => ({ ...prev, time: '', time_in: '' }));
+    setTimeInSearchTerm('');
+    setTimeOutSearchTerm('');
     
-    setFormData(prev => ({ ...prev, time: currentTime }));
-    setTimeInSearchTerm(formatTimeToAMPM(currentTime));
+    // If selecting today's date, auto-select current time
+    const selectedDate = new Date(value);
+    const today = new Date();
+    const isToday = selectedDate.toDateString() === today.toDateString();
     
-    // Auto calculate time out if estimated time is available
-    const estimatedTime = parseInt(formData.est_time) || 0;
-    if (estimatedTime > 0) {
-      calculateTimeOut(currentTime, estimatedTime);
+    if (isToday && timeSlots.length > 0) {
+      setTimeout(() => autoSelectCurrentTime(), 100);
     }
   };
 
@@ -450,9 +520,15 @@ export default function NewPatientRegistration() {
       };
     });
     
-    // Auto calculate time out if time in is selected
-    if (formData.time && totalTime > 0) {
-      calculateTimeOut(formData.time, totalTime);
+    // Auto-select current time if not already selected and appointment is today
+    if (!formData.time && timeSlots.length > 0) {
+      const today = new Date();
+      const appointmentDate = new Date(formData.appoint_date);
+      const isToday = appointmentDate.toDateString() === today.toDateString();
+      
+      if (isToday) {
+        setTimeout(() => autoSelectCurrentTime(), 100);
+      }
     }
   };
 
@@ -1424,7 +1500,7 @@ export default function NewPatientRegistration() {
                   </div>
                   {showTimeInDropdown && (
                     <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
-                      {timeSlots
+                      {getFilteredTimeSlots()
                         .filter(slot => 
                           slot.time_slot.toLowerCase().includes(timeInSearchTerm.toLowerCase())
                         )
@@ -1445,10 +1521,10 @@ export default function NewPatientRegistration() {
                           </div>
                         ))
                       }
-                      {timeSlots.filter(slot => 
+                      {getFilteredTimeSlots().filter(slot => 
                         slot.time_slot.toLowerCase().includes(timeInSearchTerm.toLowerCase())
                       ).length === 0 && (
-                        <div className="px-3 py-2 text-gray-500">No time slots found</div>
+                        <div className="px-3 py-2 text-gray-500">No time slots available</div>
                       )}
                     </div>
                   )}
@@ -1475,7 +1551,7 @@ export default function NewPatientRegistration() {
                   </div>
                   {showTimeOutDropdown && (
                     <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md mt-1 max-h-60 overflow-y-auto shadow-lg">
-                      {timeSlots
+                      {getFilteredTimeSlots()
                         .filter(slot => 
                           slot.time_slot.toLowerCase().includes(timeOutSearchTerm.toLowerCase())
                         )
@@ -1496,10 +1572,10 @@ export default function NewPatientRegistration() {
                           </div>
                         ))
                       }
-                      {timeSlots.filter(slot => 
+                      {getFilteredTimeSlots().filter(slot => 
                         slot.time_slot.toLowerCase().includes(timeOutSearchTerm.toLowerCase())
                       ).length === 0 && (
-                        <div className="px-3 py-2 text-gray-500">No time slots found</div>
+                        <div className="px-3 py-2 text-gray-500">No time slots available</div>
                       )}
                     </div>
                   )}

@@ -128,15 +128,15 @@ export default function DoctorScanReport() {
       
       const wb = XLSX.utils.book_new();
       
-      // Header data
+      // Header data with proper spacing
       const headerData = [
-        ['VARAHA SDC'],
-        ['DOCTOR SCAN REPORT'],
-        [`Date Range: ${dateRange}`],
-        [`Doctor Filter: ${doctorFilter}`],
-        [''],
-        ['REPORTS BY DOCTOR'],
-        ['Sr.No', 'Doctor', 'Reports', 'Amount']
+        ['', '', '', 'VARAHA SDC', '', '', '', ''],
+        ['', '', '', 'DOCTOR SCAN REPORT', '', '', '', ''],
+        ['', '', '', `Date Range: ${dateRange}`, '', '', '', ''],
+        ['', '', '', `Doctor Filter: ${doctorFilter}`, '', '', '', ''],
+        ['', '', '', '', '', '', '', ''],
+        ['', '', '', 'REPORTS BY DOCTOR', '', '', '', ''],
+        ['Sr.No', 'Doctor', 'Patient', 'Amount', '', '', '', '']
       ];
       
       // Doctor summary data
@@ -144,21 +144,23 @@ export default function DoctorScanReport() {
         index + 1,
         item.doctor_name || 'Unknown',
         item.report_count || 0,
-        `₹${(item.total_amount || 0).toLocaleString()}`
+        parseFloat(String(item.total_amount || 0)).toFixed(2),
+        '', '', '', ''
       ]);
       
       const doctorTotal = [
         '',
         'Total',
         (summary?.by_doctor || []).reduce((sum, item) => sum + (item.report_count || 0), 0),
-        `₹${(summary?.by_doctor || []).reduce((sum, item) => sum + (item.total_amount || 0), 0).toLocaleString()}`
+        (summary?.by_doctor || []).reduce((sum, item) => sum + parseFloat(String(item.total_amount || 0)), 0).toFixed(2),
+        '', '', '', ''
       ];
       
       // Scan head data
       const scanHeadHeader = [
-        [''],
-        ['REPORTS BY SCAN HEAD'],
-        ['Sr.No', 'Scan Head', 'Doctors', 'Reports', 'Amount', 'Rate per report']
+        ['', '', '', '', '', '', '', ''],
+        ['', '', '', 'REPORTS BY SCAN HEAD', '', '', '', ''],
+        ['Sr.No', 'Scan Head', 'Doctors', 'Reports', 'Rate/Report', 'Amount', '', '']
       ];
       
       const scanHeadData = (summary?.by_head || []).map((item, index) => {
@@ -168,28 +170,29 @@ export default function DoctorScanReport() {
           item.head_name || 'Unknown',
           item.doctor_count || 0,
           item.report_count || 0,
-          `₹${(item.total_amount || 0).toLocaleString()}`,
-          `₹${ratePerReport.toFixed(2)}`
+          ratePerReport.toFixed(2),
+          parseFloat(String(item.total_amount || 0)).toFixed(2),
+          '', ''
         ];
       });
       
-      const totalAmount = (summary?.by_head || []).reduce((sum, item) => sum + (item.total_amount || 0), 0);
+      const totalAmount = (summary?.by_head || []).reduce((sum, item) => sum + (parseFloat(String(item.total_amount)) || 0), 0);
       const totalReports = (summary?.by_head || []).reduce((sum, item) => sum + (item.report_count || 0), 0);
-      const avgRatePerReport = totalReports > 0 ? (totalAmount / totalReports).toFixed(2) : '0.00';
       
       const scanHeadTotal = [
         '',
         'Total',
         (summary?.by_head || []).reduce((sum, item) => sum + (item.doctor_count || 0), 0),
         totalReports,
-        `₹${totalAmount.toLocaleString()}`,
-        `₹${avgRatePerReport}`
+        '',
+        totalAmount.toFixed(2),
+        '', ''
       ];
       
       // Detailed reports
       const detailHeader = [
-        [''],
-        ['DETAILED REPORTS'],
+        ['', '', '', '', '', '', '', ''],
+        ['', '', '', 'DETAILED REPORTS', '', '', '', ''],
         ['S.No', 'Doctor Name', 'Patient Name', 'CRO', 'Scan Types', 'Scan Heads', 'Amount', 'Report Date']
       ];
       
@@ -200,7 +203,7 @@ export default function DoctorScanReport() {
         row.patient_cro || '',
         row.scan_names || '',
         row.scan_head_names || '',
-        `₹${(row.total_amount || 0).toLocaleString()}`,
+        parseFloat(String(row.total_amount || 0)).toFixed(2),
         row.report_date || ''
       ]);
       
@@ -218,23 +221,97 @@ export default function DoctorScanReport() {
       
       const ws = XLSX.utils.aoa_to_sheet(allData);
       
-      // Auto-fit columns
+      // Auto-fit column widths based on content
       const colWidths = [];
-      for (let i = 0; i < 8; i++) {
+      for (let C = 0; C < 8; C++) {
         let maxWidth = 10;
-        allData.forEach(row => {
-          if (row[i]) {
-            const cellLength = String(row[i]).length;
+        for (let R = 0; R < allData.length; R++) {
+          if (allData[R] && allData[R][C]) {
+            const cellLength = String(allData[R][C]).length;
             if (cellLength > maxWidth) maxWidth = cellLength;
           }
-        });
+        }
         colWidths.push({ width: Math.min(maxWidth + 2, 50) });
       }
       ws['!cols'] = colWidths;
       
-      XLSX.utils.book_append_sheet(wb, ws, 'Doctor Scan Report');
-      XLSX.writeFile(wb, 'doctor-scan-report.xlsx');
+      // Style cells
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+          if (!ws[cellAddress]) ws[cellAddress] = { t: 's', v: '' };
+          
+          // Header styling
+          if (R === 0 || R === 1 || (allData[R] && (allData[R][C] === 'VARAHA SDC' || allData[R][C] === 'DOCTOR SCAN REPORT' || String(allData[R][C] || '').includes('REPORTS BY')))) {
+            ws[cellAddress].s = {
+              font: { bold: true, size: R < 2 ? 16 : 14 },
+              alignment: { horizontal: 'center', vertical: 'center' },
+              fill: { fgColor: { rgb: 'E6E6FA' } }
+            };
+          }
+          // Table headers
+          else if (allData[R] && (allData[R][C] === 'Sr.No' || allData[R][C] === 'Doctor' || allData[R][C] === 'S.No' || allData[R][C] === 'Scan Head')) {
+            ws[cellAddress].s = {
+              font: { bold: true },
+              alignment: { horizontal: 'center', vertical: 'center' },
+              fill: { fgColor: { rgb: 'D3D3D3' } },
+              border: {
+                top: { style: 'thin' },
+                bottom: { style: 'thin' },
+                left: { style: 'thin' },
+                right: { style: 'thin' }
+              }
+            };
+          }
+          // Total rows
+          else if (allData[R] && allData[R][C] === 'Total') {
+            ws[cellAddress].s = {
+              font: { bold: true },
+              alignment: { horizontal: 'center', vertical: 'center' },
+              fill: { fgColor: { rgb: 'FFFF99' } },
+              border: {
+                top: { style: 'medium' },
+                bottom: { style: 'thin' },
+                left: { style: 'thin' },
+                right: { style: 'thin' }
+              }
+            };
+          }
+          // Data cells - add solid borders to all cells
+          else {
+            ws[cellAddress].s = {
+              alignment: {
+                horizontal: C === 0 ? 'center' : (C >= 2 && C !== 1 && C !== 4 ? 'right' : 'left'),
+                vertical: 'center'
+              },
+              border: {
+                top: { style: 'thin', color: { rgb: '000000' } },
+                bottom: { style: 'thin', color: { rgb: '000000' } },
+                left: { style: 'thin', color: { rgb: '000000' } },
+                right: { style: 'thin', color: { rgb: '000000' } }
+              }
+            };
+          }
+        }
+      }
       
+      // Merge header cells
+      ws['!merges'] = [
+        { s: { r: 0, c: 3 }, e: { r: 0, c: 4 } }, // VARAHA SDC
+        { s: { r: 1, c: 3 }, e: { r: 1, c: 5 } }, // DOCTOR SCAN REPORT
+      ];
+      
+      XLSX.utils.book_append_sheet(wb, ws, 'Doctor Scan Report');
+      
+      wb.Props = {
+        Title: 'Doctor Scan Report',
+        Subject: 'Medical Scan Report',
+        Author: 'Varaha SDC',
+        CreatedDate: new Date()
+      };
+      
+      XLSX.writeFile(wb, 'doctor-scan-report.xlsx');
       toast.success('Report downloaded successfully');
     } catch (error) {
       console.error('Download error:', error);
@@ -381,7 +458,7 @@ export default function DoctorScanReport() {
                     <tr>
                       <th className="px-4 py-2 text-left">Sr.No</th>
                       <th className="px-4 py-2 text-left">Doctor</th>
-                      <th className="px-4 py-2 text-left">Reports</th>
+                      <th className="px-4 py-2 text-left">Patient</th>
                       <th className="px-4 py-2 text-left">Amount</th>
                     </tr>
                   </thead>
@@ -400,12 +477,12 @@ export default function DoctorScanReport() {
                           <td className="px-4 py-2"></td>
                           <td className="px-4 py-2">Total</td>
                           <td className="px-4 py-2">{summary.by_doctor.reduce((sum, item) => sum + parseInt(String(item.report_count || 0)), 0)}</td>
-                          <td className="px-4 py-2">₹{summary.by_doctor.reduce((sum, item) => sum + parseFloat(String(item.total_amount || 0)), 0).toLocaleString()}</td>
+                          <td className="px-4 py-2">₹{summary.by_doctor.reduce((sum, item) => sum + parseFloat(String(item.total_amount || 0)), 0).toFixed(2)}</td>
                         </tr>
                       </>
                     ) : (
                       <tr>
-                        <td colSpan={3} className="px-4 py-4 text-center text-gray-500">No data available</td>
+                        <td colSpan={4} className="px-4 py-4 text-center text-gray-500">No data available</td>
                       </tr>
                     )}
                   </tbody>
@@ -452,7 +529,7 @@ export default function DoctorScanReport() {
                           <td className="px-4 py-2">{summary.by_head.reduce((sum, item) => sum + (item.doctor_count || 0), 0)}</td>
                           <td className="px-4 py-2">{summary.by_head.reduce((sum, item) => sum + (item.report_count || 0), 0)}</td>
                              <td className="px-4 py-2"></td>
-                          <td className="px-4 py-2">₹{summary.by_head.reduce((sum, item) => sum + (parseFloat(String(item.total_amount)) || 0), 0).toLocaleString()}</td>
+                          <td className="px-4 py-2">₹{summary.by_head.reduce((sum, item) => sum + (parseFloat(String(item.total_amount)) || 0), 0).toFixed(2)}</td>
                           
                         </tr>
                       </>
