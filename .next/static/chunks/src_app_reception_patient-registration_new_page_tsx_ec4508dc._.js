@@ -582,42 +582,33 @@ function NewPatientRegistration() {
             const timeMatch = (_scan_estimate_time = scan.estimate_time) === null || _scan_estimate_time === void 0 ? void 0 : _scan_estimate_time.match(/(\d+)/);
             return sum + (timeMatch ? parseInt(timeMatch[1]) : 0);
         }, 0);
-        // PHP logic: Free categories get 0 amount (exact category list from PHP)
-        const freeCategories = [
-            'Destitute',
-            'Chiranjeevi',
-            'RGHS',
-            'RTA',
-            'OPD FREE',
-            'IPD FREE',
-            'BPL/POOR',
-            'Sn. CITIZEN',
-            'BHAMASHAH',
-            'JSSY',
-            'PRISONER',
-            'Aayushmaan'
-        ];
-        if (freeCategories.includes(formData.petient_type)) {
-            totalAmount = 0;
-            if (toast && typeof toast.info === 'function') {
-                toast.info('Patient Belongs To BPL oR Sr. Citizen Or BHAMASHAH Or RTA Or JSSY Or PRISONER No Payment Is Taken From Them');
-            }
-        }
+        // Store scan amount in database regardless of category
+        const scanAmount = totalAmount;
         setFormData((prev)=>{
-            const newFormData = {
-                ...prev,
-                amount: totalAmount.toString(),
-                est_time: totalTime.toString(),
-                total_amount: totalAmount.toString()
-            };
-            // PHP logic: due_amount = total_amount - received_amount - discount_amount
-            const received = parseFloat(prev.rec_amount) || 0;
-            const discount = parseFloat(prev.dis_amount) || 0;
-            const due = totalAmount - received - discount;
-            return {
-                ...newFormData,
-                due_amount: due.toString()
-            };
+            let newFormData;
+            if (prev.petient_type === 'GEN / Paid') {
+                // For GEN/Paid: validate amount, received amount required
+                newFormData = {
+                    ...prev,
+                    amount: scanAmount.toString(),
+                    est_time: totalTime.toString(),
+                    total_amount: scanAmount.toString(),
+                    rec_amount: scanAmount.toString(),
+                    due_amount: '0'
+                };
+            } else {
+                // For other categories: total amount shows scan amount but received can be 0
+                newFormData = {
+                    ...prev,
+                    amount: scanAmount.toString(),
+                    est_time: totalTime.toString(),
+                    total_amount: scanAmount.toString(),
+                    rec_amount: '0',
+                    due_amount: '0'
+                };
+            // Note: Patient belongs to free category - No payment required
+            }
+            return newFormData;
         });
         // Auto-select current time if not already selected and appointment is today
         if (!formData.time && timeSlots.length > 0) {
@@ -669,6 +660,48 @@ function NewPatientRegistration() {
             return false;
         }
         return true;
+    };
+    // Handle category change and update amounts accordingly
+    const handleCategoryChange = (e)=>{
+        const { name, value } = e.target;
+        setFormData((prev)=>({
+                ...prev,
+                [name]: value
+            }));
+        // Handle category change for ID requirement
+        const freeCategories = [
+            'IPD FREE',
+            'OPD FREE',
+            'RTA',
+            'RGHS',
+            'Chiranjeevi',
+            'Destitute',
+            'PRISONER',
+            'Sn. CITIZEN',
+            'Aayushmaan'
+        ];
+        setShowUniId(freeCategories.includes(value));
+        // Recalculate amounts based on category
+        const scanAmount = selectedScans.reduce((sum, scan)=>sum + scan.charges, 0);
+        if (value === 'GEN / Paid') {
+            // For GEN/Paid: scan amount should be stored, received amount required, due can be 0
+            setFormData((prev)=>({
+                    ...prev,
+                    total_amount: scanAmount.toString(),
+                    amount: scanAmount.toString(),
+                    rec_amount: scanAmount.toString(),
+                    due_amount: '0'
+                }));
+        } else {
+            // For other categories: total amount shows scan amount, received accepts 0, due also 0
+            setFormData((prev)=>({
+                    ...prev,
+                    total_amount: scanAmount.toString(),
+                    amount: scanAmount.toString(),
+                    rec_amount: '0',
+                    due_amount: '0'
+                }));
+        }
     };
     // Check if print should be enabled (PHP logic: due_amount == '0')
     const isPrintEnabled = ()=>{
@@ -747,6 +780,19 @@ function NewPatientRegistration() {
         }
     };
     const handleSubmit = async (action)=>{
+        if (action === 'Print') {
+            // Print action - just print using saved data, no API call
+            if (savedPatientData) {
+                printReceipt(savedPatientData);
+                if (toast && typeof toast.info === 'function') {
+                    toast.info('Receipt printed successfully!');
+                }
+                setTimeout(()=>{
+                    window.location.href = '/reception/patient-registration';
+                }, 2000);
+            }
+            return;
+        }
         try {
             // Prepare data in the format expected by the API
             const submitData = {
@@ -797,22 +843,11 @@ function NewPatientRegistration() {
                 var _result_data;
                 const result = await response.json();
                 const cro = ((_result_data = result.data) === null || _result_data === void 0 ? void 0 : _result_data.cro) || (isEditMode ? 'Updated' : 'Registered');
-                if (action === 'Save') {
-                    // Save action - enable print button
-                    setIsSaved(true);
-                    setSavedPatientData(result.data);
-                    if (toast && typeof toast.success === 'function') {
-                        toast.success("Patient ".concat(isEditMode ? 'updated' : 'registered', " successfully! CRO: ").concat(cro));
-                    }
-                } else if (action === 'Print') {
-                    // Print action - print and redirect
-                    printReceipt(savedPatientData || result.data);
-                    if (toast && typeof toast.info === 'function') {
-                        toast.info('Receipt printed successfully!');
-                    }
-                    setTimeout(()=>{
-                        window.location.href = '/reception/patient-registration';
-                    }, 2000);
+                // Save action - enable print button
+                setIsSaved(true);
+                setSavedPatientData(result.data);
+                if (toast && typeof toast.success === 'function') {
+                    toast.success("Patient ".concat(isEditMode ? 'updated' : 'registered', " successfully! CRO: ").concat(cro));
                 }
             } else {
                 const errorData = await response.json().catch(()=>({}));
@@ -866,33 +901,61 @@ function NewPatientRegistration() {
         // Refresh last patient data
         fetchLastPatient();
     };
+    // Convert number to words function
+    const numberToWords = (num)=>{
+        const ones = [
+            '',
+            'one',
+            'two',
+            'three',
+            'four',
+            'five',
+            'six',
+            'seven',
+            'eight',
+            'nine'
+        ];
+        const teens = [
+            'ten',
+            'eleven',
+            'twelve',
+            'thirteen',
+            'fourteen',
+            'fifteen',
+            'sixteen',
+            'seventeen',
+            'eighteen',
+            'nineteen'
+        ];
+        const tens = [
+            '',
+            '',
+            'twenty',
+            'thirty',
+            'forty',
+            'fifty',
+            'sixty',
+            'seventy',
+            'eighty',
+            'ninety'
+        ];
+        if (num === 0) return 'zero';
+        if (num < 10) return ones[num];
+        if (num < 20) return teens[num - 10];
+        if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? ' ' + ones[num % 10] : '');
+        if (num < 1000) return ones[Math.floor(num / 100)] + ' hundred' + (num % 100 ? ' ' + numberToWords(num % 100) : '');
+        if (num < 100000) return numberToWords(Math.floor(num / 1000)) + ' thousand' + (num % 1000 ? ' ' + numberToWords(num % 1000) : '');
+        return num.toString();
+    };
     const printReceipt = (patientData)=>{
-        // Create print content matching exact PHP receipt format
         const currentDate = new Date().toLocaleDateString('en-GB');
-        const currentTime = new Date().toLocaleTimeString('en-IN', {
-            hour12: false
-        });
-        // Get scan names for investigations field
         const investigations = selectedScans.map((scan)=>scan.s_name).join(', ');
-        const printContent = "\n      <!DOCTYPE html>\n      <html>\n        <head>\n          <title>Patient Receipt - ".concat(patientData.cro || 'New Patient', '</title>\n          <style>\n            @font-face {\n              font-family: \'kruti_dev_010regular\';\n              src: url(\'fonts/k010-webfont.ttf\') format(\'truetype\');\n              font-weight: normal;\n              font-style: normal;\n            }\n            @media print {\n              .no_print, .no_print * { display: none !important; }\n              .admission_div_desc { border: 0px !important; }\n              .page_break { page-break-after: always; }\n            }\n            .admission_form {\n              text-align: center;\n              color: #000000;\n              font-size: 14px;\n              width: 100%;\n            }\n            .admission_form table {\n              width: 100%;\n              font-size: 10px;\n              margin: -5px 0px;\n            }\n            .admission_form .form_input_box {\n              border-bottom: 0px dotted #000000;\n              padding: 0px 0px 2px 0px;\n              width: 100%;\n              display: inline-block;\n            }\n            .admission_form .form_input {\n              padding: 2px 1%;\n              font-size: 16px;\n              border: none;\n              font-weight: bold;\n              font-style: italic;\n              width: 99%;\n              border-bottom: 1px dotted #000000;\n            }\n            body {\n              font-family: Arial, sans-serif;\n              margin: 0;\n              padding: 10px;\n              background: #FFFFFF;\n            }\n          </style>\n        </head>\n        <body bgcolor="#FFFFFF" leftmargin="0" topmargin="0" marginwidth="0" marginheight="0">\n          <div class="admission_form" align="center" style="border:solid thin; margin-top:20px;width:99.0%;margin-left:5px;margin-right:5px">\n            <table align="center" style="margin-top:2px;">\n              <!-- Heading-->\n              <tr>\n                <td align="center" colspan="6">Dr. S.N. MEDICL COLLEGE AND ATTACHED GROUP OF HOSPITAL, JODHPUR</td>\n              </tr>\n              <tr>\n                <td align="center" colspan="6">Rajasthan Medical Relief Society, M.D.M. Hospital, Jodhpur</td>\n              </tr>\n              <tr>\n                <td align="center" colspan="6">IMAGING CENTRE UNDER P.P.P.MODE : VARAHA SDC</td>\n              </tr>\n              <tr>\n                <td align="center" colspan="6">256 SLICE DUAL ENERGY CT SCAN, M.D.M HOSPITAL Jodhpur(Raj.) - 342003</td>\n              </tr>\n              <tr>\n                <td align="center" colspan="6">Tel. : +91-291-2621517, Fax : +91-291-2621317</td>\n              </tr>\n              <tr>\n                <td align="center" colspan="6">Cash Receipt</td>\n              </tr>\n            </table>\n            <!-- Heading-->\n            \n            <!-- Row1 -->\n            <table>\n              <tr>\n                <td width="80"><label>Reg.No :</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="reg" value="').concat(patientData.cro || '', '"></span></td>\n                <td width="30"><label>Date</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="date" value="').concat(currentDate, '"></span></td>\n              </tr>\n            </table>\n            \n            <!-- Row2 -->\n            <table>\n              <tr>\n                <td width="80"><label>Deptt. :</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="doctor" value="').concat(doctorSearchTerm || '', '"></span></td>\n                <td width="220"><label>Date and Time of Appoinment :</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="date-time" value="').concat(formData.appoint_date.split('-').reverse().join('-'), " ").concat(formatTimeToAMPM(formData.time), "-").concat(formatTimeToAMPM(formData.time_in), '"></span></td>\n              </tr>\n            </table>\n            <!-- Row2 -->\n            \n            <!-- Row3-->\n            <table>\n              <tr>\n                <td width="130"><label>Name Of Patient :</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="name" value="').concat(formData.pre, " ").concat(formData.firstname, '"></span></td>\n                <td><label>Age :</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="age" value="').concat(formData.age, " ").concat(formData.age_type, '"></span></td>\n                <td><label>Gender</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="gender" value="').concat(formData.gender, '"></span></td>\n              </tr>\n            </table>\n            <!-- Row3 -->\n            \n            <!-- Row4-->\n            <table>\n              <tr>\n                <td width="80"><label>Address</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="address" value="').concat(formData.address || '', '"></span></td>\n                <td width="60"><label>Phone:</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="phone" value="').concat(formData.contact_number || '', '"></span></td>\n              </tr>\n            </table>\n            <!-- Row4 -->\n            \n            <!--Row5-->\n            <table>\n              <tr>\n                <td width="80"><label>Investiations:</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="investigations" value="').concat(investigations, '"></span></td>\n              </tr>\n            </table>\n            <!--Row5-->\n            \n            <!--Row6-->\n            <table>\n              <tr>\n                <td width="150"><label>For Sum Of Rupees:</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="sum" value="Rs. ').concat(formData.total_amount, '/-"></span></td>\n                <td width="150"><input type="text" name="amunt" value="Rs. ').concat(formData.total_amount, '" style="border:2px solid;"></td>\n              </tr>\n            </table>\n            <!--Row6-->\n            \n            <!--Row7-->\n            <table>\n              <tr>\n                <td align="right" colspan="6"><label>For Varaha SDC, Jodhpur</label></td>\n              </tr>\n            </table>\n            <br>\n          </div>\n          <hr>\n          \n          <!-- Duplicate Receipt -->\n          <div class="admission_form" align="center" style="border:solid thin; margin-top:18px; width:99.0%;margin-left:5px;margin-right:5px">\n            <table align="center" style="margin-top:2px;">\n              <!-- Heading-->\n              <tr>\n                <td align="center" colspan="6">Dr. S.N. MEDICL COLLEGE AND ATTACHED GROUP OF HOSPITAL, JODHPUR</td>\n              </tr>\n              <tr>\n                <td align="center" colspan="6">Rajasthan Medical Relief Society, M.D.M. Hospital, Jodhpur</td>\n              </tr>\n              <tr>\n                <td align="center" colspan="6">IMAGING CENTRE UNDER P.P.P.MODE : VARAHA SDC</td>\n              </tr>\n              <tr>\n                <td align="center" colspan="6">256 SLICE DUAL ENERGY CT SCAN, M.D.M HOSPITAL Jodhpur(Raj.) - 342003</td>\n              </tr>\n              <tr>\n                <td align="center" colspan="6">Tel. : +91-291-2621517, Fax : +91-291-2621317</td>\n              </tr>\n              <tr>\n                <td align="center" colspan="6">Cash Receipt</td>\n              </tr>\n            </table>\n            <!-- Heading-->\n            \n            <!-- Row1 -->\n            <table>\n              <tr>\n                <td width="80"><label>Reg.No :</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="reg" value="').concat(patientData.cro || '', '"></span></td>\n                <td width="30"><label>Date</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="date" value="').concat(currentDate, '"></span></td>\n              </tr>\n            </table>\n            \n            <!-- Row2 -->\n            <table>\n              <tr>\n                <td width="80"><label>Deptt. :</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="doctor" value="').concat(doctorSearchTerm || '', '"></span></td>\n                <td width="220"><label>Date and Time of Appoinment :</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="date-time" value="').concat(formData.appoint_date.split('-').reverse().join('-'), " ").concat(formatTimeToAMPM(formData.time), "-").concat(formatTimeToAMPM(formData.time_in), '"></span></td>\n              </tr>\n            </table>\n            <!-- Row2 -->\n            \n            <!-- Row3-->\n            <table>\n              <tr>\n                <td width="130"><label>Name Of Patient :</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="name" value="').concat(formData.pre, " ").concat(formData.firstname, '"></span></td>\n                <td><label>Age :</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="age" value="').concat(formData.age, " ").concat(formData.age_type, '"></span></td>\n                <td><label>Gender</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="gender" value="').concat(formData.gender, '"></span></td>\n              </tr>\n            </table>\n            <!-- Row3 -->\n            \n            <!-- Row4-->\n            <table>\n              <tr>\n                <td width="80"><label>Address</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="address" value="').concat(formData.address || '', '"></span></td>\n                <td width="60"><label>Phone:</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="phone" value="').concat(formData.contact_number || '', '"></span></td>\n              </tr>\n            </table>\n            <!-- Row4 -->\n            \n            <!--Row5-->\n            <table>\n              <tr>\n                <td width="80"><label>Investiations:</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="investigations" value="').concat(investigations, '"></span></td>\n              </tr>\n            </table>\n            <!--Row5-->\n            \n            <!--Row6-->\n            <table>\n              <tr>\n                <td width="150"><label>For Sum Of Rupees:</label></td>\n                <td><span class="form_input_box"><input type="text" class="form_input" name="sum" value="Rs. ').concat(formData.total_amount, '/-"></span></td>\n                <td width="150"><input type="text" name="amunt" value="Rs. ').concat(formData.total_amount, '" style="border:2px solid;"></td>\n              </tr>\n            </table>\n            <!--Row6-->\n            \n            <!--Row7-->\n            <table>\n              <tr>\n                <td align="right" colspan="6"><label>For Varaha SDC, Jodhpur</label></td>\n              </tr>\n            </table>\n            <br>\n          </div>\n        </body>\n      </html>\n    ');
-        // Open print window
-        const printWindow = window.open('', '_blank', 'width=800,height=600');
+        const amountInWords = numberToWords(parseInt(formData.rec_amount || formData.total_amount)).toUpperCase();
+        const printContent = "\n<!DOCTYPE html>\n<html>\n<head>\n<title>Receipt - ".concat(patientData.cro || 'New Patient', '</title>\n<style>\n.admission_form { text-align: center; color: #000000; font-size: 10px; width: 100%; }\n.admission_form table { width: 98%; font-size: 10px; margin: -5px 8px; }\n.admission_form .form_input { padding: 2px 1%; font-size: 10px; border: none; font-weight: bold; font-style: italic; width: 99%; border-bottom: 1px dotted #000000; }\n.admission_form .form_input_box { border-bottom: 0px dotted #000000; padding: 0px 0px 2px 0px; width: 100%; display: inline-block; }\n@media print { .no_print, .no_print * { display: none !important; } .admission_div_desc { border: 0px !important; } .page_break { page-break-after: always; } }\n</style>\n</head>\n<body bgcolor="#FFFFFF" leftmargin="0" topmargin="0" marginwidth="0" marginheight="0" onload="window.print(); setTimeout(() => window.close(), 1000);">\n<div class="admission_form" align="center" style="border:solid thin; margin-top:18px;width:93.0%;margin-left:30px;">\n  <table align="center" style="margin-top:2px;">\n    <tr><td colspan="6"><b>Dr. S.N. MEDICAL COLLEGE AND ATTACHED GROUP OF HOSPITAL, JODHPUR</b></td></tr>\n    <tr><td colspan="6"><b>Rajasthan Medical Relief Society, M.D.M. Hospital, Jodhpur</b></td></tr>\n    <tr><td colspan="6"><b>IMAGING CENTRE UNDER P.P.P.MODE : VARAHA SDC</b></td></tr>\n    <tr><td colspan="6"><b>256 SLICE DUAL ENERGY CT SCAN, M.D.M HOSPITAL Jodhpur(Raj.) - 342003</b></td></tr>\n    <tr><td colspan="6"><b>Tel. : +91-291-2648120 , 0291-2648121 , 0291-2648122</b></td></tr>\n  </table>\n  \n  <table>\n    <tr>\n      <td width="55">Reg.No :</td>\n      <td width="200"><span class="form_input_box"><input type="text" class="form_input" value="').concat(patientData.cro || '', "(").concat(patientData.patient_id || '', ')"></span></td>\n      <td colspan="6"><span style="margin-left:30%; border: 1px solid #02C; border-radius: 11px;padding: 3px 15px;">Cash Receipt</span></td>\n      <td width="36">Date</td>\n      <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="').concat(currentDate, '"></span></td>\n    </tr>\n  </table>\n  \n  <table>\n    <tr>\n      <td width="56">Ref. By :</td>\n      <td width="482"><span class="form_input_box"><input type="text" class="form_input" value="').concat(doctorSearchTerm || '', '"></span></td>\n      <td width="174">Date and Time of Appointment :</td>\n      <td width="316"><span class="form_input_box"><input type="text" class="form_input" value="').concat(formData.appoint_date.split('-').reverse().join('-'), " ").concat(timeInSearchTerm || '', "-").concat(timeOutSearchTerm || '', '"></span></td>\n    </tr>\n  </table>\n  \n  <table>\n    <tr>\n      <td width="78">Patient Name:</td>\n      <td width="650"><span class="form_input_box"><input type="text" class="form_input" value="').concat(formData.pre, " ").concat(formData.firstname, '"></span></td>\n      <td width="33">Age :</td>\n      <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="').concat(formData.age, '"></span></td>\n      <td width="36">Gender</td>\n      <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="').concat(formData.gender, '"></span></td>\n    </tr>\n  </table>\n  \n  <table>\n    <tr>\n      <td width="40">Address</td>\n      <td width="687"><span class="form_input_box"><input type="text" class="form_input" value="').concat(formData.address || '', '"></span></td>\n      <td width="687"><span class="form_input_box"><label>Category</label><input type="text" class="form_input" value="').concat(formData.petient_type, '"></span></td>\n      <td width="33">Phone:</td>\n      <td width="333"><span class="form_input_box"><input type="text" class="form_input" value="').concat(formData.contact_number || '', '"></span></td>\n    </tr>\n  </table>\n  \n  <table>\n    <tr>\n      <td width="59">Investigations:</td>\n      <td width="1042"><span class="form_input_box"><input type="text" class="form_input" value="').concat(investigations, '"></span></td>\n    </tr>\n  </table>\n  \n  <table>\n    <tr>\n      <td width="129">For Sum Of Rupees:</td>\n      <td width="733"><span class="form_input_box"><input type="text" class="form_input" value="').concat(amountInWords, ' RUPEES ONLY"></span></td>\n      <td width="147"><label>Scan Amount</label><input type="text" value="₹ ').concat(formData.total_amount, '" style="border:1px solid #5E60AE;"></td>\n      <td width="147"><label>Received Amount</label><input type="text" value="₹ ').concat(formData.rec_amount, '" style="border:1px solid #5E60AE;"></td>\n    </tr>\n  </table>\n  \n  <table>\n    <tr>\n      <td colspan="6" align="right" style="padding-top: 20px;">For Varaha SDC, Jodhpur</td>\n    </tr>\n    <tr>\n      <td colspan="6" align="right" style="padding-top: 30px;">Signature</td>\n    </tr>\n  </table>\n  \n  <table style="margin-top: 10px;">\n    <tr>\n      <td colspan="6" style="font-size: 8px; text-align: center;">This is a computer generated receipt</td>\n    </tr>\n  </table>\n</div>\n\n<div style="page-break-before: always;"></div>\n\n<div class="admission_form" align="center" style="border:solid thin; margin-top:18px;width:93.0%;margin-left:30px;">\n  <table align="center" style="margin-top:2px;">\n    <tr><td colspan="6"><b>Dr. S.N. MEDICAL COLLEGE AND ATTACHED GROUP OF HOSPITAL, JODHPUR</b></td></tr>\n    <tr><td colspan="6"><b>Rajasthan Medical Relief Society, M.D.M. Hospital, Jodhpur</b></td></tr>\n    <tr><td colspan="6"><b>IMAGING CENTRE UNDER P.P.P.MODE : VARAHA SDC</b></td></tr>\n    <tr><td colspan="6"><b>256 SLICE DUAL ENERGY CT SCAN, M.D.M HOSPITAL Jodhpur(Raj.) - 342003</b></td></tr>\n    <tr><td colspan="6"><b>Tel. : +91-291-2648120 , 0291-2648121 , 0291-2648122</b></td></tr>\n  </table>\n  \n  <table>\n    <tr>\n      <td width="55">Reg.No :</td>\n      <td width="200"><span class="form_input_box"><input type="text" class="form_input" value="').concat(patientData.cro || '', "(").concat(patientData.patient_id || '', ')"></span></td>\n      <td colspan="6"><span style="margin-left:30%; border: 1px solid #02C; border-radius: 11px;padding: 3px 15px;">Cash Receipt</span></td>\n      <td width="36">Date</td>\n      <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="').concat(currentDate, '"></span></td>\n    </tr>\n  </table>\n  \n  <table>\n    <tr>\n      <td width="56">Ref. By :</td>\n      <td width="482"><span class="form_input_box"><input type="text" class="form_input" value="').concat(doctorSearchTerm || '', '"></span></td>\n      <td width="174">Date and Time of Appointment :</td>\n      <td width="316"><span class="form_input_box"><input type="text" class="form_input" value="').concat(formData.appoint_date.split('-').reverse().join('-'), " ").concat(timeInSearchTerm || '', "-").concat(timeOutSearchTerm || '', '"></span></td>\n    </tr>\n  </table>\n  \n  <table>\n    <tr>\n      <td width="78">Patient Name:</td>\n      <td width="650"><span class="form_input_box"><input type="text" class="form_input" value="').concat(formData.pre, " ").concat(formData.firstname, '"></span></td>\n      <td width="33">Age :</td>\n      <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="').concat(formData.age, '"></span></td>\n      <td width="36">Gender</td>\n      <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="').concat(formData.gender, '"></span></td>\n    </tr>\n  </table>\n  \n  <table>\n    <tr>\n      <td width="40">Address</td>\n      <td width="687"><span class="form_input_box"><input type="text" class="form_input" value="').concat(formData.address || '', '"></span></td>\n      <td width="687"><span class="form_input_box"><label>Category</label><input type="text" class="form_input" value="').concat(formData.petient_type, '"></span></td>\n      <td width="33">Phone:</td>\n      <td width="333"><span class="form_input_box"><input type="text" class="form_input" value="').concat(formData.contact_number || '', '"></span></td>\n    </tr>\n  </table>\n  \n  <table>\n    <tr>\n      <td width="59">Investigations:</td>\n      <td width="1042"><span class="form_input_box"><input type="text" class="form_input" value="').concat(investigations, '"></span></td>\n    </tr>\n  </table>\n  \n  <table>\n    <tr>\n      <td width="129">For Sum Of Rupees:</td>\n      <td width="733"><span class="form_input_box"><input type="text" class="form_input" value="').concat(amountInWords, ' RUPEES ONLY"></span></td>\n      <td width="147"><label>Scan Amount</label><input type="text" value="₹ ').concat(formData.total_amount, '" style="border:1px solid #5E60AE;"></td>\n      <td width="147"><label>Received Amount</label><input type="text" value="₹ ').concat(formData.rec_amount, '" style="border:1px solid #5E60AE;"></td>\n    </tr>\n  </table>\n  \n  <table>\n    <tr>\n      <td colspan="6" align="right" style="padding-top: 20px;">For Varaha SDC, Jodhpur</td>\n    </tr>\n    <tr>\n      <td colspan="6" align="right" style="padding-top: 30px;">Signature</td>\n    </tr>\n  </table>\n  \n  <table style="margin-top: 10px;">\n    <tr>\n      <td colspan="6" style="font-size: 8px; text-align: center;">This is a computer generated receipt</td>\n    </tr>\n  </table>\n</div>\n</body>\n</html>');
+        const printWindow = window.open('', '_blank');
         if (printWindow) {
             printWindow.document.write(printContent);
             printWindow.document.close();
-            // Force immediate print trigger
-            setTimeout(()=>{
-                printWindow.focus();
-                try {
-                    printWindow.print();
-                } catch (error) {
-                    console.error('Print failed:', error);
-                    // Fallback: try again after a short delay
-                    setTimeout(()=>{
-                        printWindow.print();
-                    }, 500);
-                }
-            }, 100);
         }
     };
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -910,7 +973,7 @@ function NewPatientRegistration() {
                                     children: isEditMode ? 'Edit Patient Registration' : 'New Patient Registration'
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                    lineNumber: 1148,
+                                    lineNumber: 1116,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -918,13 +981,13 @@ function NewPatientRegistration() {
                                     children: isEditMode ? 'Update patient information and scan details' : 'Complete patient enrollment and scan booking'
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                    lineNumber: 1149,
+                                    lineNumber: 1117,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                            lineNumber: 1147,
+                            lineNumber: 1115,
                             columnNumber: 11
                         }, this),
                         lastPatient && !isEditMode && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -935,7 +998,7 @@ function NewPatientRegistration() {
                                     children: "Last Enrolled Patient"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                    lineNumber: 1153,
+                                    lineNumber: 1121,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -947,24 +1010,24 @@ function NewPatientRegistration() {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                    lineNumber: 1154,
+                                    lineNumber: 1122,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                            lineNumber: 1152,
+                            lineNumber: 1120,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                    lineNumber: 1146,
+                    lineNumber: 1114,
                     columnNumber: 9
                 }, this)
             }, void 0, false, {
                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                lineNumber: 1145,
+                lineNumber: 1113,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -984,7 +1047,7 @@ function NewPatientRegistration() {
                                             children: "1. Enrollment"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                            lineNumber: 1172,
+                                            lineNumber: 1140,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -992,13 +1055,13 @@ function NewPatientRegistration() {
                                             children: "1. Enrollment Detail"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                            lineNumber: 1173,
+                                            lineNumber: 1141,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                    lineNumber: 1164,
+                                    lineNumber: 1132,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1010,7 +1073,7 @@ function NewPatientRegistration() {
                                             children: "2. Scans"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                            lineNumber: 1183,
+                                            lineNumber: 1151,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1018,13 +1081,13 @@ function NewPatientRegistration() {
                                             children: "2. Scan Options"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                            lineNumber: 1184,
+                                            lineNumber: 1152,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                    lineNumber: 1175,
+                                    lineNumber: 1143,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -1036,7 +1099,7 @@ function NewPatientRegistration() {
                                             children: "3. Payment"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                            lineNumber: 1194,
+                                            lineNumber: 1162,
                                             columnNumber: 15
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -1044,24 +1107,24 @@ function NewPatientRegistration() {
                                             children: "3. Payment Details"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                            lineNumber: 1195,
+                                            lineNumber: 1163,
                                             columnNumber: 15
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                    lineNumber: 1186,
+                                    lineNumber: 1154,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                            lineNumber: 1163,
+                            lineNumber: 1131,
                             columnNumber: 11
                         }, this)
                     }, void 0, false, {
                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                        lineNumber: 1162,
+                        lineNumber: 1130,
                         columnNumber: 9
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("form", {
@@ -1080,7 +1143,7 @@ function NewPatientRegistration() {
                                                         children: "Date"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1206,
+                                                        lineNumber: 1174,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1091,13 +1154,13 @@ function NewPatientRegistration() {
                                                         readOnly: true
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1207,
+                                                        lineNumber: 1175,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1205,
+                                                lineNumber: 1173,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1112,13 +1175,13 @@ function NewPatientRegistration() {
                                                                 children: "*"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1216,
+                                                                lineNumber: 1184,
                                                                 columnNumber: 97
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1216,
+                                                        lineNumber: 1184,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1137,20 +1200,20 @@ function NewPatientRegistration() {
                                                                 required: true
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1218,
+                                                                lineNumber: 1186,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$down$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronDown$3e$__["ChevronDown"], {
                                                                 className: "absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1232,
+                                                                lineNumber: 1200,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1217,
+                                                        lineNumber: 1185,
                                                         columnNumber: 19
                                                     }, this),
                                                     showHospitalDropdown && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1175,7 +1238,7 @@ function NewPatientRegistration() {
                                                                     children: hospital.h_name
                                                                 }, hospital.h_id, false, {
                                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                    lineNumber: 1241,
+                                                                    lineNumber: 1209,
                                                                     columnNumber: 27
                                                                 }, this)),
                                                             hospitals.filter((hospital)=>hospital.h_name.toLowerCase().includes(hospitalSearchTerm.toLowerCase())).length === 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1183,13 +1246,13 @@ function NewPatientRegistration() {
                                                                 children: "No hospitals found"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1260,
+                                                                lineNumber: 1228,
                                                                 columnNumber: 25
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1235,
+                                                        lineNumber: 1203,
                                                         columnNumber: 21
                                                     }, this),
                                                     errors.hospital_name && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1197,13 +1260,13 @@ function NewPatientRegistration() {
                                                         children: errors.hospital_name
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1264,
+                                                        lineNumber: 1232,
                                                         columnNumber: 44
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1215,
+                                                lineNumber: 1183,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1218,13 +1281,13 @@ function NewPatientRegistration() {
                                                                 children: "*"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1267,
+                                                                lineNumber: 1235,
                                                                 columnNumber: 95
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1267,
+                                                        lineNumber: 1235,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1243,20 +1306,20 @@ function NewPatientRegistration() {
                                                                 required: true
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1269,
+                                                                lineNumber: 1237,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$chevron$2d$down$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ChevronDown$3e$__["ChevronDown"], {
                                                                 className: "absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1283,
+                                                                lineNumber: 1251,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1268,
+                                                        lineNumber: 1236,
                                                         columnNumber: 19
                                                     }, this),
                                                     showDoctorDropdown && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1281,7 +1344,7 @@ function NewPatientRegistration() {
                                                                     children: doctor.dname
                                                                 }, doctor.d_id, false, {
                                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                    lineNumber: 1292,
+                                                                    lineNumber: 1260,
                                                                     columnNumber: 27
                                                                 }, this)),
                                                             doctors.filter((doctor)=>doctor.dname.toLowerCase().includes(doctorSearchTerm.toLowerCase())).length === 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1289,13 +1352,13 @@ function NewPatientRegistration() {
                                                                 children: "No doctors found"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1311,
+                                                                lineNumber: 1279,
                                                                 columnNumber: 25
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1286,
+                                                        lineNumber: 1254,
                                                         columnNumber: 21
                                                     }, this),
                                                     errors.doctor_name && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1303,19 +1366,19 @@ function NewPatientRegistration() {
                                                         children: errors.doctor_name
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1315,
+                                                        lineNumber: 1283,
                                                         columnNumber: 42
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1266,
+                                                lineNumber: 1234,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                        lineNumber: 1204,
+                                        lineNumber: 1172,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1332,13 +1395,13 @@ function NewPatientRegistration() {
                                                                 children: "*"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1321,
+                                                                lineNumber: 1289,
                                                                 columnNumber: 96
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1321,
+                                                        lineNumber: 1289,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -1352,7 +1415,7 @@ function NewPatientRegistration() {
                                                                 children: "Mr."
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1328,
+                                                                lineNumber: 1296,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1360,7 +1423,7 @@ function NewPatientRegistration() {
                                                                 children: "Mrs."
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1329,
+                                                                lineNumber: 1297,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1368,7 +1431,7 @@ function NewPatientRegistration() {
                                                                 children: "Master"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1330,
+                                                                lineNumber: 1298,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1376,7 +1439,7 @@ function NewPatientRegistration() {
                                                                 children: "Miss"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1331,
+                                                                lineNumber: 1299,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1384,19 +1447,19 @@ function NewPatientRegistration() {
                                                                 children: "Baby"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1332,
+                                                                lineNumber: 1300,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1322,
+                                                        lineNumber: 1290,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1320,
+                                                lineNumber: 1288,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1407,7 +1470,7 @@ function NewPatientRegistration() {
                                                         children: " "
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1336,
+                                                        lineNumber: 1304,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1420,7 +1483,7 @@ function NewPatientRegistration() {
                                                         required: true
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1337,
+                                                        lineNumber: 1305,
                                                         columnNumber: 19
                                                     }, this),
                                                     errors.firstname && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1428,19 +1491,19 @@ function NewPatientRegistration() {
                                                         children: errors.firstname
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1348,
+                                                        lineNumber: 1316,
                                                         columnNumber: 40
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1335,
+                                                lineNumber: 1303,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                        lineNumber: 1319,
+                                        lineNumber: 1287,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1457,13 +1520,13 @@ function NewPatientRegistration() {
                                                                 children: "*"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1354,
+                                                                lineNumber: 1322,
                                                                 columnNumber: 87
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1354,
+                                                        lineNumber: 1322,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1486,7 +1549,7 @@ function NewPatientRegistration() {
                                                         maxLength: 3
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1355,
+                                                        lineNumber: 1323,
                                                         columnNumber: 19
                                                     }, this),
                                                     errors.age && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1494,13 +1557,13 @@ function NewPatientRegistration() {
                                                         children: errors.age
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1376,
+                                                        lineNumber: 1344,
                                                         columnNumber: 34
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1353,
+                                                lineNumber: 1321,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1510,7 +1573,7 @@ function NewPatientRegistration() {
                                                         children: "In (Year/Month/Days)"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1379,
+                                                        lineNumber: 1347,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -1524,7 +1587,7 @@ function NewPatientRegistration() {
                                                                 children: "Year"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1386,
+                                                                lineNumber: 1354,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1532,7 +1595,7 @@ function NewPatientRegistration() {
                                                                 children: "Month"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1387,
+                                                                lineNumber: 1355,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1540,19 +1603,19 @@ function NewPatientRegistration() {
                                                                 children: "Days"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1388,
+                                                                lineNumber: 1356,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1380,
+                                                        lineNumber: 1348,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1378,
+                                                lineNumber: 1346,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1562,7 +1625,7 @@ function NewPatientRegistration() {
                                                         children: "Gender"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1392,
+                                                        lineNumber: 1360,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
@@ -1576,7 +1639,7 @@ function NewPatientRegistration() {
                                                                 children: "Male"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1399,
+                                                                lineNumber: 1367,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1584,19 +1647,19 @@ function NewPatientRegistration() {
                                                                 children: "Female"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1400,
+                                                                lineNumber: 1368,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1393,
+                                                        lineNumber: 1361,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1391,
+                                                lineNumber: 1359,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1606,13 +1669,13 @@ function NewPatientRegistration() {
                                                         children: "Category"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1404,
+                                                        lineNumber: 1372,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("select", {
                                                         name: "petient_type",
                                                         value: formData.petient_type,
-                                                        onChange: handleInputChange,
+                                                        onChange: handleCategoryChange,
                                                         className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500",
                                                         children: [
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1620,7 +1683,7 @@ function NewPatientRegistration() {
                                                                 children: "GEN / Paid"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1411,
+                                                                lineNumber: 1379,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1628,7 +1691,7 @@ function NewPatientRegistration() {
                                                                 children: "IPD Free"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1412,
+                                                                lineNumber: 1380,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1636,7 +1699,7 @@ function NewPatientRegistration() {
                                                                 children: "OPD Free"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1413,
+                                                                lineNumber: 1381,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1644,7 +1707,7 @@ function NewPatientRegistration() {
                                                                 children: "RTA"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1414,
+                                                                lineNumber: 1382,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1652,7 +1715,7 @@ function NewPatientRegistration() {
                                                                 children: "RGHS"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1415,
+                                                                lineNumber: 1383,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1660,7 +1723,7 @@ function NewPatientRegistration() {
                                                                 children: "Chiranjeevi"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1416,
+                                                                lineNumber: 1384,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1668,7 +1731,7 @@ function NewPatientRegistration() {
                                                                 children: "Destitute"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1417,
+                                                                lineNumber: 1385,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1676,7 +1739,7 @@ function NewPatientRegistration() {
                                                                 children: "PRISONER"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1418,
+                                                                lineNumber: 1386,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1684,7 +1747,7 @@ function NewPatientRegistration() {
                                                                 children: "Sn. CITIZEN"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1419,
+                                                                lineNumber: 1387,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("option", {
@@ -1692,25 +1755,25 @@ function NewPatientRegistration() {
                                                                 children: "Aayushmaan"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1420,
+                                                                lineNumber: 1388,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1405,
+                                                        lineNumber: 1373,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1403,
+                                                lineNumber: 1371,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                        lineNumber: 1352,
+                                        lineNumber: 1320,
                                         columnNumber: 15
                                     }, this),
                                     showUniId && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1723,7 +1786,7 @@ function NewPatientRegistration() {
                                                         children: "ID"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1428,
+                                                        lineNumber: 1396,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1735,13 +1798,13 @@ function NewPatientRegistration() {
                                                         placeholder: "Y / N"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1429,
+                                                        lineNumber: 1397,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1427,
+                                                lineNumber: 1395,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1751,7 +1814,7 @@ function NewPatientRegistration() {
                                                         children: "Name Of ID"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1439,
+                                                        lineNumber: 1407,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1763,13 +1826,13 @@ function NewPatientRegistration() {
                                                         placeholder: "ID Name"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1440,
+                                                        lineNumber: 1408,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1438,
+                                                lineNumber: 1406,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1779,7 +1842,7 @@ function NewPatientRegistration() {
                                                         children: "Upload ID"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1450,
+                                                        lineNumber: 1418,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1788,19 +1851,19 @@ function NewPatientRegistration() {
                                                         className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1451,
+                                                        lineNumber: 1419,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1449,
+                                                lineNumber: 1417,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                        lineNumber: 1426,
+                                        lineNumber: 1394,
                                         columnNumber: 17
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1810,7 +1873,7 @@ function NewPatientRegistration() {
                                                 children: "Address"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1461,
+                                                lineNumber: 1429,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1822,13 +1885,13 @@ function NewPatientRegistration() {
                                                 placeholder: "Please enter your Address"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1462,
+                                                lineNumber: 1430,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                        lineNumber: 1460,
+                                        lineNumber: 1428,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1841,7 +1904,7 @@ function NewPatientRegistration() {
                                                         children: "City"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1474,
+                                                        lineNumber: 1442,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1853,13 +1916,13 @@ function NewPatientRegistration() {
                                                         placeholder: "Please enter your city"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1475,
+                                                        lineNumber: 1443,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1473,
+                                                lineNumber: 1441,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1869,7 +1932,7 @@ function NewPatientRegistration() {
                                                         children: "Contact Number"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1485,
+                                                        lineNumber: 1453,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -1892,7 +1955,7 @@ function NewPatientRegistration() {
                                                         maxLength: 10
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1486,
+                                                        lineNumber: 1454,
                                                         columnNumber: 19
                                                     }, this),
                                                     errors.contact_number && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -1900,25 +1963,25 @@ function NewPatientRegistration() {
                                                         children: errors.contact_number
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1507,
+                                                        lineNumber: 1475,
                                                         columnNumber: 45
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1484,
+                                                lineNumber: 1452,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                        lineNumber: 1472,
+                                        lineNumber: 1440,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                lineNumber: 1203,
+                                lineNumber: 1171,
                                 columnNumber: 13
                             }, this),
                             currentStep === 2 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1935,13 +1998,13 @@ function NewPatientRegistration() {
                                                         children: "*"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1517,
+                                                        lineNumber: 1485,
                                                         columnNumber: 91
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1517,
+                                                lineNumber: 1485,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1954,12 +2017,12 @@ function NewPatientRegistration() {
                                                     className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                    lineNumber: 1519,
+                                                    lineNumber: 1487,
                                                     columnNumber: 19
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1518,
+                                                lineNumber: 1486,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1975,7 +2038,7 @@ function NewPatientRegistration() {
                                                                     className: "rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                    lineNumber: 1532,
+                                                                    lineNumber: 1500,
                                                                     columnNumber: 23
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -1986,7 +2049,7 @@ function NewPatientRegistration() {
                                                                             children: scan.s_name
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                            lineNumber: 1539,
+                                                                            lineNumber: 1507,
                                                                             columnNumber: 25
                                                                         }, this),
                                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2000,19 +2063,19 @@ function NewPatientRegistration() {
                                                                             ]
                                                                         }, void 0, true, {
                                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                            lineNumber: 1540,
+                                                                            lineNumber: 1508,
                                                                             columnNumber: 25
                                                                         }, this)
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                    lineNumber: 1538,
+                                                                    lineNumber: 1506,
                                                                     columnNumber: 23
                                                                 }, this)
                                                             ]
                                                         }, scan.s_id, true, {
                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                            lineNumber: 1531,
+                                                            lineNumber: 1499,
                                                             columnNumber: 21
                                                         }, this)),
                                                     scans.filter((scan)=>scan.s_name.toLowerCase().includes(scanSearchTerm.toLowerCase())).length === 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2020,13 +2083,13 @@ function NewPatientRegistration() {
                                                         children: "No scans found"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1547,
+                                                        lineNumber: 1515,
                                                         columnNumber: 21
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1527,
+                                                lineNumber: 1495,
                                                 columnNumber: 17
                                             }, this),
                                             errors.type_of_scan && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2034,13 +2097,13 @@ function NewPatientRegistration() {
                                                 children: errors.type_of_scan
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1550,
+                                                lineNumber: 1518,
                                                 columnNumber: 41
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                        lineNumber: 1516,
+                                        lineNumber: 1484,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2053,7 +2116,7 @@ function NewPatientRegistration() {
                                                         children: "Appoint Date"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1555,
+                                                        lineNumber: 1523,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2064,13 +2127,13 @@ function NewPatientRegistration() {
                                                         className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1556,
+                                                        lineNumber: 1524,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1554,
+                                                lineNumber: 1522,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2084,13 +2147,13 @@ function NewPatientRegistration() {
                                                                 children: "*"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1565,
+                                                                lineNumber: 1533,
                                                                 columnNumber: 91
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1565,
+                                                        lineNumber: 1533,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2100,7 +2163,7 @@ function NewPatientRegistration() {
                                                         readOnly: true
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1566,
+                                                        lineNumber: 1534,
                                                         columnNumber: 19
                                                     }, this),
                                                     errors.time && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2108,13 +2171,13 @@ function NewPatientRegistration() {
                                                         children: errors.time
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1572,
+                                                        lineNumber: 1540,
                                                         columnNumber: 35
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1564,
+                                                lineNumber: 1532,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2128,13 +2191,13 @@ function NewPatientRegistration() {
                                                                 children: "*"
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1575,
+                                                                lineNumber: 1543,
                                                                 columnNumber: 92
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1575,
+                                                        lineNumber: 1543,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2144,7 +2207,7 @@ function NewPatientRegistration() {
                                                         readOnly: true
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1576,
+                                                        lineNumber: 1544,
                                                         columnNumber: 19
                                                     }, this),
                                                     errors.time_in && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -2152,13 +2215,13 @@ function NewPatientRegistration() {
                                                         children: errors.time_in
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1582,
+                                                        lineNumber: 1550,
                                                         columnNumber: 38
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1574,
+                                                lineNumber: 1542,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2168,7 +2231,7 @@ function NewPatientRegistration() {
                                                         children: "Amount"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1585,
+                                                        lineNumber: 1553,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2179,13 +2242,13 @@ function NewPatientRegistration() {
                                                         readOnly: true
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1586,
+                                                        lineNumber: 1554,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1584,
+                                                lineNumber: 1552,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2195,7 +2258,7 @@ function NewPatientRegistration() {
                                                         children: "Estimated Time"
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1595,
+                                                        lineNumber: 1563,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2206,19 +2269,19 @@ function NewPatientRegistration() {
                                                         readOnly: true
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1596,
+                                                        lineNumber: 1564,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1594,
+                                                lineNumber: 1562,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                        lineNumber: 1553,
+                                        lineNumber: 1521,
                                         columnNumber: 15
                                     }, this),
                                     selectedScans.length > 0 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2229,7 +2292,7 @@ function NewPatientRegistration() {
                                                 children: "Selected Scans"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1608,
+                                                lineNumber: 1576,
                                                 columnNumber: 19
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2246,7 +2309,7 @@ function NewPatientRegistration() {
                                                                         children: "S.No"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                        lineNumber: 1613,
+                                                                        lineNumber: 1581,
                                                                         columnNumber: 27
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -2254,7 +2317,7 @@ function NewPatientRegistration() {
                                                                         children: "Name Of Scan"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                        lineNumber: 1614,
+                                                                        lineNumber: 1582,
                                                                         columnNumber: 27
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("th", {
@@ -2262,18 +2325,18 @@ function NewPatientRegistration() {
                                                                         children: "Charges"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                        lineNumber: 1615,
+                                                                        lineNumber: 1583,
                                                                         columnNumber: 27
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1612,
+                                                                lineNumber: 1580,
                                                                 columnNumber: 25
                                                             }, this)
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                            lineNumber: 1611,
+                                                            lineNumber: 1579,
                                                             columnNumber: 23
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("tbody", {
@@ -2284,7 +2347,7 @@ function NewPatientRegistration() {
                                                                             children: index + 1
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                            lineNumber: 1621,
+                                                                            lineNumber: 1589,
                                                                             columnNumber: 29
                                                                         }, this),
                                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -2292,7 +2355,7 @@ function NewPatientRegistration() {
                                                                             children: scan.s_name
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                            lineNumber: 1622,
+                                                                            lineNumber: 1590,
                                                                             columnNumber: 29
                                                                         }, this),
                                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("td", {
@@ -2303,41 +2366,41 @@ function NewPatientRegistration() {
                                                                             ]
                                                                         }, void 0, true, {
                                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                            lineNumber: 1623,
+                                                                            lineNumber: 1591,
                                                                             columnNumber: 29
                                                                         }, this)
                                                                     ]
                                                                 }, scan.s_id, true, {
                                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                    lineNumber: 1620,
+                                                                    lineNumber: 1588,
                                                                     columnNumber: 27
                                                                 }, this))
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                            lineNumber: 1618,
+                                                            lineNumber: 1586,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                    lineNumber: 1610,
+                                                    lineNumber: 1578,
                                                     columnNumber: 21
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1609,
+                                                lineNumber: 1577,
                                                 columnNumber: 19
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                        lineNumber: 1607,
+                                        lineNumber: 1575,
                                         columnNumber: 17
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                lineNumber: 1515,
+                                lineNumber: 1483,
                                 columnNumber: 13
                             }, this),
                             currentStep === 3 && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2355,19 +2418,19 @@ function NewPatientRegistration() {
                                                             className: "h-5 w-5 mr-2 text-blue-600"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                            lineNumber: 1640,
+                                                            lineNumber: 1608,
                                                             columnNumber: 21
                                                         }, this),
                                                         "Patient Summary"
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                    lineNumber: 1639,
+                                                    lineNumber: 1607,
                                                     columnNumber: 19
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1638,
+                                                lineNumber: 1606,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2386,7 +2449,7 @@ function NewPatientRegistration() {
                                                                             children: "Patient Name"
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                            lineNumber: 1648,
+                                                                            lineNumber: 1616,
                                                                             columnNumber: 25
                                                                         }, this),
                                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2398,13 +2461,13 @@ function NewPatientRegistration() {
                                                                             ]
                                                                         }, void 0, true, {
                                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                            lineNumber: 1649,
+                                                                            lineNumber: 1617,
                                                                             columnNumber: 25
                                                                         }, this)
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                    lineNumber: 1647,
+                                                                    lineNumber: 1615,
                                                                     columnNumber: 23
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2415,7 +2478,7 @@ function NewPatientRegistration() {
                                                                             children: "Age & Gender"
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                            lineNumber: 1652,
+                                                                            lineNumber: 1620,
                                                                             columnNumber: 25
                                                                         }, this),
                                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2429,19 +2492,19 @@ function NewPatientRegistration() {
                                                                             ]
                                                                         }, void 0, true, {
                                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                            lineNumber: 1653,
+                                                                            lineNumber: 1621,
                                                                             columnNumber: 25
                                                                         }, this)
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                    lineNumber: 1651,
+                                                                    lineNumber: 1619,
                                                                     columnNumber: 23
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                            lineNumber: 1646,
+                                                            lineNumber: 1614,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2455,7 +2518,7 @@ function NewPatientRegistration() {
                                                                             children: "Category"
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                            lineNumber: 1659,
+                                                                            lineNumber: 1627,
                                                                             columnNumber: 25
                                                                         }, this),
                                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2463,13 +2526,13 @@ function NewPatientRegistration() {
                                                                             children: formData.petient_type
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                            lineNumber: 1660,
+                                                                            lineNumber: 1628,
                                                                             columnNumber: 25
                                                                         }, this)
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                    lineNumber: 1658,
+                                                                    lineNumber: 1626,
                                                                     columnNumber: 23
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2480,7 +2543,7 @@ function NewPatientRegistration() {
                                                                             children: "Appointment Date"
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                            lineNumber: 1663,
+                                                                            lineNumber: 1631,
                                                                             columnNumber: 25
                                                                         }, this),
                                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2488,19 +2551,19 @@ function NewPatientRegistration() {
                                                                             children: formData.appoint_date.split('-').reverse().join('-')
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                            lineNumber: 1664,
+                                                                            lineNumber: 1632,
                                                                             columnNumber: 25
                                                                         }, this)
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                    lineNumber: 1662,
+                                                                    lineNumber: 1630,
                                                                     columnNumber: 23
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                            lineNumber: 1657,
+                                                            lineNumber: 1625,
                                                             columnNumber: 21
                                                         }, this),
                                                         (formData.contact_number || formData.address) && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2514,7 +2577,7 @@ function NewPatientRegistration() {
                                                                             children: "Contact Number"
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                            lineNumber: 1672,
+                                                                            lineNumber: 1640,
                                                                             columnNumber: 29
                                                                         }, this),
                                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2522,13 +2585,13 @@ function NewPatientRegistration() {
                                                                             children: formData.contact_number
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                            lineNumber: 1673,
+                                                                            lineNumber: 1641,
                                                                             columnNumber: 29
                                                                         }, this)
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                    lineNumber: 1671,
+                                                                    lineNumber: 1639,
                                                                     columnNumber: 27
                                                                 }, this),
                                                                 formData.address && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2539,7 +2602,7 @@ function NewPatientRegistration() {
                                                                             children: "Address"
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                            lineNumber: 1678,
+                                                                            lineNumber: 1646,
                                                                             columnNumber: 29
                                                                         }, this),
                                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2547,19 +2610,19 @@ function NewPatientRegistration() {
                                                                             children: formData.address
                                                                         }, void 0, false, {
                                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                            lineNumber: 1679,
+                                                                            lineNumber: 1647,
                                                                             columnNumber: 29
                                                                         }, this)
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                    lineNumber: 1677,
+                                                                    lineNumber: 1645,
                                                                     columnNumber: 27
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                            lineNumber: 1669,
+                                                            lineNumber: 1637,
                                                             columnNumber: 23
                                                         }, this),
                                                         formData.time && formData.time_in && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2570,7 +2633,7 @@ function NewPatientRegistration() {
                                                                     children: "Time Slot"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                    lineNumber: 1687,
+                                                                    lineNumber: 1655,
                                                                     columnNumber: 25
                                                                 }, this),
                                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2588,36 +2651,36 @@ function NewPatientRegistration() {
                                                                             ]
                                                                         }, void 0, true, {
                                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                            lineNumber: 1690,
+                                                                            lineNumber: 1658,
                                                                             columnNumber: 27
                                                                         }, this)
                                                                     ]
                                                                 }, void 0, true, {
                                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                    lineNumber: 1688,
+                                                                    lineNumber: 1656,
                                                                     columnNumber: 25
                                                                 }, this)
                                                             ]
                                                         }, void 0, true, {
                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                            lineNumber: 1686,
+                                                            lineNumber: 1654,
                                                             columnNumber: 23
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                    lineNumber: 1645,
+                                                    lineNumber: 1613,
                                                     columnNumber: 19
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1644,
+                                                lineNumber: 1612,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                        lineNumber: 1637,
+                                        lineNumber: 1605,
                                         columnNumber: 15
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2630,12 +2693,12 @@ function NewPatientRegistration() {
                                                     children: "Payment Details"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                    lineNumber: 1700,
+                                                    lineNumber: 1668,
                                                     columnNumber: 19
                                                 }, this)
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1699,
+                                                lineNumber: 1667,
                                                 columnNumber: 17
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2651,12 +2714,12 @@ function NewPatientRegistration() {
                                                                     children: "Selected Scans"
                                                                 }, void 0, false, {
                                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                    lineNumber: 1708,
+                                                                    lineNumber: 1676,
                                                                     columnNumber: 25
                                                                 }, this)
                                                             }, void 0, false, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1707,
+                                                                lineNumber: 1675,
                                                                 columnNumber: 23
                                                             }, this),
                                                             selectedScans.map((scan, index)=>/*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2671,7 +2734,7 @@ function NewPatientRegistration() {
                                                                             ]
                                                                         }, void 0, true, {
                                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                            lineNumber: 1712,
+                                                                            lineNumber: 1680,
                                                                             columnNumber: 27
                                                                         }, this),
                                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -2682,19 +2745,19 @@ function NewPatientRegistration() {
                                                                             ]
                                                                         }, void 0, true, {
                                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                            lineNumber: 1713,
+                                                                            lineNumber: 1681,
                                                                             columnNumber: 27
                                                                         }, this)
                                                                     ]
                                                                 }, scan.s_id, true, {
                                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                    lineNumber: 1711,
+                                                                    lineNumber: 1679,
                                                                     columnNumber: 25
                                                                 }, this))
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1706,
+                                                        lineNumber: 1674,
                                                         columnNumber: 21
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2707,7 +2770,7 @@ function NewPatientRegistration() {
                                                                         children: "Total Amount"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                        lineNumber: 1722,
+                                                                        lineNumber: 1690,
                                                                         columnNumber: 23
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2718,13 +2781,13 @@ function NewPatientRegistration() {
                                                                         readOnly: true
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                        lineNumber: 1723,
+                                                                        lineNumber: 1691,
                                                                         columnNumber: 23
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1721,
+                                                                lineNumber: 1689,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2734,7 +2797,7 @@ function NewPatientRegistration() {
                                                                         children: "Received Amount"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                        lineNumber: 1732,
+                                                                        lineNumber: 1700,
                                                                         columnNumber: 23
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2745,11 +2808,11 @@ function NewPatientRegistration() {
                                                                         onChange: (e)=>{
                                                                             const total = parseFloat(formData.total_amount) || 0;
                                                                             const received = parseFloat(e.target.value) || 0;
-                                                                            if (received > total) {
-                                                                                if (toast && typeof toast.error === 'function') {
-                                                                                    toast.error('Received amount cannot be more than total amount');
+                                                                            // For GEN/Paid category, validate received amount
+                                                                            if (formData.petient_type === 'GEN / Paid') {
+                                                                                if (received > total) {
+                                                                                    return;
                                                                                 }
-                                                                                return;
                                                                             }
                                                                             const discount = parseFloat(formData.dis_amount) || 0;
                                                                             const due = total - received - discount;
@@ -2759,17 +2822,18 @@ function NewPatientRegistration() {
                                                                                     due_amount: due.toString()
                                                                                 }));
                                                                         },
-                                                                        className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500",
-                                                                        placeholder: "0"
+                                                                        className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 ".concat(formData.petient_type !== 'GEN / Paid' ? 'bg-gray-50' : ''),
+                                                                        placeholder: "0",
+                                                                        readOnly: formData.petient_type !== 'GEN / Paid'
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                        lineNumber: 1733,
+                                                                        lineNumber: 1701,
                                                                         columnNumber: 23
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1731,
+                                                                lineNumber: 1699,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2779,7 +2843,7 @@ function NewPatientRegistration() {
                                                                         children: "Discount"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                        lineNumber: 1758,
+                                                                        lineNumber: 1729,
                                                                         columnNumber: 23
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2801,13 +2865,13 @@ function NewPatientRegistration() {
                                                                         placeholder: "0"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                        lineNumber: 1759,
+                                                                        lineNumber: 1730,
                                                                         columnNumber: 23
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1757,
+                                                                lineNumber: 1728,
                                                                 columnNumber: 21
                                                             }, this),
                                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2817,7 +2881,7 @@ function NewPatientRegistration() {
                                                                         children: "Due Amount"
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                        lineNumber: 1775,
+                                                                        lineNumber: 1746,
                                                                         columnNumber: 23
                                                                     }, this),
                                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
@@ -2828,19 +2892,19 @@ function NewPatientRegistration() {
                                                                         readOnly: true
                                                                     }, void 0, false, {
                                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                        lineNumber: 1776,
+                                                                        lineNumber: 1747,
                                                                         columnNumber: 23
                                                                     }, this)
                                                                 ]
                                                             }, void 0, true, {
                                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                                lineNumber: 1774,
+                                                                lineNumber: 1745,
                                                                 columnNumber: 21
                                                             }, this)
                                                         ]
                                                     }, void 0, true, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1720,
+                                                        lineNumber: 1688,
                                                         columnNumber: 19
                                                     }, this),
                                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2850,30 +2914,30 @@ function NewPatientRegistration() {
                                                             children: isPrintEnabled() ? 'Ready to print' : 'Payment Required - Complete payment to enable printing'
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                            lineNumber: 1792,
+                                                            lineNumber: 1763,
                                                             columnNumber: 21
                                                         }, this)
                                                     }, void 0, false, {
                                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                        lineNumber: 1789,
+                                                        lineNumber: 1760,
                                                         columnNumber: 19
                                                     }, this)
                                                 ]
                                             }, void 0, true, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1703,
+                                                lineNumber: 1671,
                                                 columnNumber: 17
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                        lineNumber: 1698,
+                                        lineNumber: 1666,
                                         columnNumber: 15
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                lineNumber: 1636,
+                                lineNumber: 1604,
                                 columnNumber: 13
                             }, this),
                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2889,20 +2953,20 @@ function NewPatientRegistration() {
                                                 className: "h-4 w-4"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1813,
+                                                lineNumber: 1784,
                                                 columnNumber: 15
                                             }, this),
                                             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                 children: "Previous"
                                             }, void 0, false, {
                                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                lineNumber: 1814,
+                                                lineNumber: 1785,
                                                 columnNumber: 15
                                             }, this)
                                         ]
                                     }, void 0, true, {
                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                        lineNumber: 1807,
+                                        lineNumber: 1778,
                                         columnNumber: 13
                                     }, this),
                                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2916,20 +2980,20 @@ function NewPatientRegistration() {
                                                     children: "Next"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                    lineNumber: 1824,
+                                                    lineNumber: 1795,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$lucide$2d$react$2f$dist$2f$esm$2f$icons$2f$arrow$2d$right$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__$3c$export__default__as__ArrowRight$3e$__["ArrowRight"], {
                                                     className: "h-4 w-4"
                                                 }, void 0, false, {
                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                    lineNumber: 1825,
+                                                    lineNumber: 1796,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true, {
                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                            lineNumber: 1819,
+                                            lineNumber: 1790,
                                             columnNumber: 17
                                         }, this) : /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Fragment"], {
                                             children: [
@@ -2943,20 +3007,20 @@ function NewPatientRegistration() {
                                                             className: "h-5 w-5"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                            lineNumber: 1835,
+                                                            lineNumber: 1806,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                             children: isSaved ? 'SAVED' : 'SAVE'
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                            lineNumber: 1836,
+                                                            lineNumber: 1807,
                                                             columnNumber: 21
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                    lineNumber: 1829,
+                                                    lineNumber: 1800,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -2970,20 +3034,20 @@ function NewPatientRegistration() {
                                                             className: "h-5 w-5"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                            lineNumber: 1845,
+                                                            lineNumber: 1816,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                             children: "PRINT"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                            lineNumber: 1846,
+                                                            lineNumber: 1817,
                                                             columnNumber: 21
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                    lineNumber: 1838,
+                                                    lineNumber: 1809,
                                                     columnNumber: 19
                                                 }, this),
                                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("button", {
@@ -3003,51 +3067,51 @@ function NewPatientRegistration() {
                                                             className: "h-5 w-5"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                            lineNumber: 1861,
+                                                            lineNumber: 1832,
                                                             columnNumber: 21
                                                         }, this),
                                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                                                             children: "EXIT"
                                                         }, void 0, false, {
                                                             fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                            lineNumber: 1862,
+                                                            lineNumber: 1833,
                                                             columnNumber: 21
                                                         }, this)
                                                     ]
                                                 }, void 0, true, {
                                                     fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                                    lineNumber: 1848,
+                                                    lineNumber: 1819,
                                                     columnNumber: 19
                                                 }, this)
                                             ]
                                         }, void 0, true)
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                        lineNumber: 1817,
+                                        lineNumber: 1788,
                                         columnNumber: 13
                                     }, this)
                                 ]
                             }, void 0, true, {
                                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                                lineNumber: 1806,
+                                lineNumber: 1777,
                                 columnNumber: 11
                             }, this)
                         ]
                     }, void 0, true, {
                         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                        lineNumber: 1200,
+                        lineNumber: 1168,
                         columnNumber: 9
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-                lineNumber: 1160,
+                lineNumber: 1128,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/reception/patient-registration/new/page.tsx",
-        lineNumber: 1144,
+        lineNumber: 1112,
         columnNumber: 5
     }, this);
 }

@@ -9,7 +9,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Query parameter required' }, { status: 400 });
     }
 
-    const response = await fetch(`https://varahasdc.co.in/api/admin/patients/search?q=${query}`);
+    const response = await fetch('https://varahasdc.co.in/api/admin/patients/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ q: query })
+    });
     
     if (!response.ok) {
       throw new Error(`API responded with status: ${response.status}`);

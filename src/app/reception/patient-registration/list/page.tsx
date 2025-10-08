@@ -44,7 +44,7 @@ export default function PatientList() {
 
   const fetchPatients = async () => {
     try {
-      const response = await fetch('https://varahasdc.co.in/api/reception/patients/today');
+      const response = await fetch('https://varahasdc.co.in/api/reception/patients/list');
       
       if (response.ok) {
         const data = await response.json();
@@ -210,7 +210,7 @@ export default function PatientList() {
                       <div className="text-sm font-medium text-blue-600">{patient.cro}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-black">{patient.pre}{patient.patient_name}</div>
+                      <div className="text-sm font-medium text-black">{patient.patient_name}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{getAmountStatus(patient)}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.dname || '-'}</td>

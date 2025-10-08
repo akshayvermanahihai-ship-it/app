@@ -1,10 +1,18 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
+  "/api/categories/route": "app/api/categories/route.js",
+  "/api/patients/search/route": "app/api/patients/search/route.js",
   "/api/reception/stats/route": "app/api/reception/stats/route.js",
   "/favicon.ico/route": "app/favicon.ico/route.js",
   "/login/page": "app/login/page.js",
   "/page": "app/page.js",
   "/reception/dashboard/page": "app/reception/dashboard/page.js",
   "/reception/hospitals/page": "app/reception/hospitals/page.js",
-  "/reception/patient-registration/new/page": "app/reception/patient-registration/new/page.js"
+  "/reception/patient-category/page": "app/reception/patient-category/page.js",
+  "/reception/patient-registration/back-entry/page": "app/reception/patient-registration/back-entry/page.js",
+  "/reception/patient-registration/edit/page": "app/reception/patient-registration/edit/page.js",
+  "/reception/patient-registration/list/page": "app/reception/patient-registration/list/page.js",
+  "/reception/patient-registration/new/page": "app/reception/patient-registration/new/page.js",
+  "/reception/patient-registration/page": "app/reception/patient-registration/page.js",
+  "/reception/patient-reprint-old/page": "app/reception/patient-reprint-old/page.js",
+  "/reception/pending-patient/page": "app/reception/pending-patient/page.js"
 }

@@ -129,9 +129,9 @@ export default function PatientCategory() {
                       <div className="text-sm font-medium text-black">{category.cat_name}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 text-xs font-bold rounded-full border bg-blue-100 text-blue-900 border-blue-300">
+                      <div className="text-sm font-semibold text-gray-900">
                         {category.cat_type}
-                      </span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button onClick={() => handleEdit(category)} className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 text-xs font-medium shadow-md">

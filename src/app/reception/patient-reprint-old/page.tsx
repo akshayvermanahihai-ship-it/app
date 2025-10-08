@@ -12,6 +12,7 @@ interface Patient {
   cro_number?: string;
   patient_name?: string;
   firstname?: string;
+  pre?: string;
   age?: number;
   gender?: string;
   mobile?: string;
@@ -23,6 +24,12 @@ interface Patient {
   category?: string;
   date?: string;
   amount?: number;
+  amount_reci?: number;
+  allot_date?: string;
+  time_slot?: string;
+  scan_names?: string;
+  total_scan_amount?: number;
+  address?: string;
 }
 
 export default function PatientReprintOld() {
@@ -39,11 +46,15 @@ export default function PatientReprintOld() {
     
     setLoading(true);
     try {
-      const response = await fetch(`https://varahasdc.co.in/api/admin/patients/search?q=${encodeURIComponent(searchTerm)}`);
+      const response = await fetch(`/api/patients/search?q=${encodeURIComponent(searchTerm)}`);
       if (response.ok) {
         const data = await response.json();
         console.log('Search API response:', data); // Debug log
-        setPatients(data.data || []);
+        if (data.success && data.patient) {
+          setPatients([data.patient]); // Wrap single patient in array
+        } else {
+          setPatients([]);
+        }
       }
     } catch (error) {
       console.error('Error searching patients:', error);
@@ -72,39 +83,43 @@ export default function PatientReprintOld() {
     try {
       console.log('Patient data:', patient); // Debug log
       
-      // Use CRO if available, otherwise use patient_id
-      const identifier = patient.cro_number || patient.cro || patient.patient_id;
+      // Use patient data directly from search result
+      const receiptData = {
+        cro: patient.cro,
+        patient_id: patient.patient_id,
+        patient_name: `${patient.pre} ${patient.patient_name}`,
+        age: patient.age,
+        gender: patient.gender,
+        address: patient.address || '',
+        contact_number: patient.contact_number || '',
+        category: patient.category || '',
+        doctor_name: patient.doctor_name || patient.dname,
+        date: patient.date,
+        allot_date: patient.allot_date,
+        time_slot: patient.time_slot || '',
+        scan_names: patient.scan_names || '',
+        amount: patient.amount || 0,
+        amount_reci: patient.amount_reci || 0,
+        total_scan_amount: patient.total_scan_amount || 0
+      };
       
-      if (!identifier) {
-        throw new Error('No identifier found for this patient');
-      }
-      
-      // Fetch receipt data from our Next.js API
-      const response = await fetch(`https://varahasdc.co.in/api/reception/receipt/${encodeURIComponent(identifier)}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch receipt data');
-      }
-      
-      const { data: receiptData } = await response.json();
-      
-      // Generate receipt HTML using our Next.js system
+      // Generate receipt HTML using PHP format
       const receiptHTML = `
         <!DOCTYPE html>
         <html>
         <head>
           <title>Receipt - ${receiptData.cro}</title>
           <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
             .admission_form { text-align: center; color: #000000; font-size: 10px; width: 100%; }
             .admission_form table { width: 98%; font-size: 10px; margin: -5px 8px; }
             .admission_form .form_input { padding: 2px 1%; font-size: 10px; border: none; font-weight: bold; font-style: italic; width: 99%; border-bottom: 1px dotted #000000; }
-            .form_input_box { border-bottom: 0px dotted #000000; padding: 0px 0px 2px 0px; width: 100%; display: inline-block; }
-            @media print { body { margin: 0; } }
+            .admission_form .form_input_box { border-bottom: 0px dotted #000000; padding: 0px 0px 2px 0px; width: 100%; display: inline-block; }
+            @media print { .no_print, .no_print * { display: none !important; } .admission_div_desc { border: 0px !important; } .page_break { page-break-after: always; } }
           </style>
         </head>
-        <body onload="window.print(); setTimeout(() => window.close(), 1000);">
-          <div class="admission_form" style="border:solid thin; margin-top:18px;width:93.0%;margin-left:30px;">
-            <table style="margin-top:2px;">
+        <body bgcolor="#FFFFFF" leftmargin="0" topmargin="0" marginwidth="0" marginheight="0" onload="window.print(); setTimeout(() => window.close(), 1000);">
+          <div class="admission_form" align="center" style="border:solid thin; margin-top:18px;width:93.0%;margin-left:30px;">
+            <table align="center" style="margin-top:2px;">
               <tr><td colspan="6"><b>Dr. S.N. MEDICAL COLLEGE AND ATTACHED GROUP OF HOSPITAL, JODHPUR</b></td></tr>
               <tr><td colspan="6"><b>Rajasthan Medical Relief Society, M.D.M. Hospital, Jodhpur</b></td></tr>
               <tr><td colspan="6"><b>IMAGING CENTRE UNDER P.P.P.MODE : VARAHA SDC</b></td></tr>
@@ -127,7 +142,7 @@ export default function PatientReprintOld() {
                 <td width="56">Ref. By :</td>
                 <td width="482"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.doctor_name}"></span></td>
                 <td width="174">Date and Time of Appointment :</td>
-                <td width="316"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.appointment_date} ${receiptData.appointment_time}"></span></td>
+                <td width="316"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.allot_date}"></span></td>
               </tr>
             </table>
             
@@ -146,7 +161,7 @@ export default function PatientReprintOld() {
               <tr>
                 <td width="40">Address</td>
                 <td width="687"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.address}"></span></td>
-                <td width="687"><span class="form_input_box"><label>Category</label><input type="text" class="form_input" value="${receiptData.category}"></span></td>
+                <td width="120"><span class="form_input_box"><label>Category</label><input type="text" class="form_input" value="${receiptData.category}"></span></td>
                 <td width="33">Phone:</td>
                 <td width="333"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.contact_number}"></span></td>
               </tr>
@@ -155,30 +170,33 @@ export default function PatientReprintOld() {
             <table>
               <tr>
                 <td width="59">Investigations:</td>
-                <td width="1042"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.investigations}"></span></td>
+                <td width="1042"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.scan_names}"></span></td>
               </tr>
             </table>
             
             <table>
               <tr>
-                <td width="129">For Sum Of Rupees:</td>
-                <td width="733"><span class="form_input_box"><input type="text" class="form_input" value="${numberToWords(receiptData.received_amount).toUpperCase()} RUPEES ONLY"></span></td>
-                <td width="147"><label>Scan Amount</label><input type="text" value="₹ ${receiptData.scan_amount}" style="border:1px solid #5E60AE;"></td>
-                <td width="147"><label>Received Amount</label><input type="text" value="₹ ${receiptData.received_amount}" style="border:1px solid #5E60AE;"></td>
+                <td width="100">For Sum Of Rupees:</td>
+                <td width="733"><span class="form_input_box"><input type="text" class="form_input" value="${numberToWords(receiptData.amount_reci).toUpperCase()} RUPEES ONLY"></span></td>
+                <td width="30"><label>Scan Amount</label><input type="text" value="₹ ${receiptData.total_scan_amount}" style="border:1px solid #5E60AE;"></td>
+                <td width="30"><label>Received Amount</label><input type="text" value="₹ ${receiptData.amount_reci}" style="border:1px solid #5E60AE;"></td>
               </tr>
             </table>
             
             <table>
               <tr>
-                <td colspan="6" align="right">For Varaha SDC<br><span style="margin-right:50px;">Jodhpur</span></td>
+                <td colspan="6" align="right">For Varaha SDC, Jodhpur</span></td>
+              </tr>
+                      <tr>
+                <td></td>
               </tr>
             </table>
           </div>
           
           <hr>
           
-          <div class="admission_form" style="border:solid thin; margin-top:18px;width:93.0%;margin-left:30px;">
-            <table style="margin-top:2px;">
+          <div div class="admission_form" align="center" style="border:solid thin; margin-top:18px;width:93.0%;margin-left:30px;">
+            <table align="center" style="margin-top:2px;">
               <tr><td colspan="6"><b>Dr. S.N. MEDICAL COLLEGE AND ATTACHED GROUP OF HOSPITAL, JODHPUR</b></td></tr>
               <tr><td colspan="6"><b>Rajasthan Medical Relief Society, M.D.M. Hospital, Jodhpur</b></td></tr>
               <tr><td colspan="6"><b>IMAGING CENTRE UNDER P.P.P.MODE : VARAHA SDC</b></td></tr>
@@ -201,7 +219,7 @@ export default function PatientReprintOld() {
                 <td width="56">Ref. By :</td>
                 <td width="482"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.doctor_name}"></span></td>
                 <td width="174">Date and Time of Appointment :</td>
-                <td width="316"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.appointment_date} ${receiptData.appointment_time}"></span></td>
+                <td width="316"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.allot_date}"></span></td>
               </tr>
             </table>
             
@@ -220,7 +238,7 @@ export default function PatientReprintOld() {
               <tr>
                 <td width="40">Address</td>
                 <td width="687"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.address}"></span></td>
-                <td width="687"><span class="form_input_box"><label>Category</label><input type="text" class="form_input" value="${receiptData.category}"></span></td>
+                <td width="120"><span class="form_input_box"><label>Category</label><input type="text" class="form_input" value="${receiptData.category}"></span></td>
                 <td width="33">Phone:</td>
                 <td width="333"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.contact_number}"></span></td>
               </tr>
@@ -229,22 +247,25 @@ export default function PatientReprintOld() {
             <table>
               <tr>
                 <td width="59">Investigations:</td>
-                <td width="1042"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.investigations}"></span></td>
+                <td width="1042"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.scan_names}"></span></td>
               </tr>
             </table>
             
             <table>
               <tr>
-                <td width="129">For Sum Of Rupees:</td>
-                <td width="733"><span class="form_input_box"><input type="text" class="form_input" value="${numberToWords(receiptData.received_amount).toUpperCase()} RUPEES ONLY"></span></td>
-                <td width="147"><label>Scan Amount</label><input type="text" value="₹ ${receiptData.scan_amount}" style="border:1px solid #5E60AE;"></td>
-                <td width="147"><label>Received Amount</label><input type="text" value="₹ ${receiptData.received_amount}" style="border:1px solid #5E60AE;"></td>
+                <td width="20">For Sum Of Rupees:</td>
+                <td width="550"><span class="form_input_box"><input type="text" class="form_input" value="${numberToWords(receiptData.amount_reci).toUpperCase()} RUPEES ONLY"></span></td>
+                <td width="30"><label>Scan Amount</label><input type="text" value="₹ ${receiptData.total_scan_amount}" style="border:1px solid #5E60AE;"></td>
+                <td width="30"><label>Received Amount</label><input type="text" value="₹ ${receiptData.amount_reci}" style="border:1px solid #5E60AE;"></td>
               </tr>
             </table>
             
             <table>
               <tr>
-                <td colspan="6" align="right">For Varaha SDC<br><span style="margin-right:50px;">Jodhpur</span></td>
+                <td colspan="6" align="right">For Varaha SDC, Jodhpur</span></td>
+              </tr>
+                 <tr>
+                <td></td>
               </tr>
             </table>
           </div>
@@ -260,7 +281,7 @@ export default function PatientReprintOld() {
       }
       
       const patientName = patient.patient_name || patient.firstname || 'Unknown Patient';
-      toast.success(`Receipt generated for ${patientName} (${identifier})`);
+      toast.success(`Receipt generated for ${patientName} (${receiptData.cro})`);
       
     } catch (error) {
       console.error('Error generating receipt:', error);

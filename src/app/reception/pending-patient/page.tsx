@@ -80,9 +80,9 @@ export default function PendingPatient() {
   };
 
   const filteredPatients = patients.filter(patient =>
-    patient.patient_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    patient.cro_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    patient.mobile.includes(searchTerm)
+    (patient.patient_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (patient.cro_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (patient.mobile || '').includes(searchTerm)
   );
 
   const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
@@ -152,7 +152,7 @@ export default function PendingPatient() {
                     <tr key={patient.p_id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black font-medium">{startIndex + index + 1}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-blue-600">{patient.cro_number}</div>
+                        <div className="text-sm font-medium text-blue-600">{patient.cro}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-black">{patient.patient_name}</div>

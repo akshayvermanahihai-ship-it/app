@@ -25,13 +25,13 @@ const ToastComponent = ({ toast, onRemove }: ToastProps) => {
   const getIcon = () => {
     switch (toast.type) {
       case 'success':
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
+        return <CheckCircle className="h-5 w-5 text-green-700" />;
       case 'error':
-        return <XCircle className="h-5 w-5 text-red-600" />;
+        return <XCircle className="h-5 w-5 text-red-700" />;
       case 'warning':
-        return <AlertCircle className="h-5 w-5 text-yellow-600" />;
+        return <AlertCircle className="h-5 w-5 text-yellow-700" />;
       case 'info':
-        return <Info className="h-5 w-5 text-blue-600" />;
+        return <Info className="h-5 w-5 text-blue-700" />;
     }
   };
 
@@ -78,7 +78,7 @@ const Toast = ({ message, type, isVisible, onClose }: {
   };
   
   return (
-    <div className="fixed top-4 right-4 z-50">
+    <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
       <ToastComponent toast={toast} onRemove={onClose} />
     </div>
   );
