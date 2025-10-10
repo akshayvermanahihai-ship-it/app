@@ -175,22 +175,22 @@ export default function PendingPatient() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex space-x-1">
                           <button
-                            onClick={() => updatePatientStatus(patient.p_id, 'in_progress')}
-                            disabled={updating === patient.p_id}
+                            onClick={() => updatePatientStatus(patient.patient_id || patient.p_id || 0, 'in_progress')}
+                            disabled={updating === (patient.patient_id || patient.p_id)}
                             className="px-2 py-1 bg-sky-400 text-white text-xs rounded-lg hover:bg-sky-500 disabled:opacity-50 font-medium transition-all duration-200 shadow-md"
                           >
                             Start
                           </button>
                           <button
-                            onClick={() => updatePatientStatus(patient.p_id, 'completed')}
-                            disabled={updating === patient.p_id}
+                            onClick={() => updatePatientStatus(patient.patient_id || patient.p_id || 0, 'completed')}
+                            disabled={updating === (patient.patient_id || patient.p_id)}
                             className="px-2 py-1 bg-sky-400 text-white text-xs rounded-lg hover:bg-sky-500 disabled:opacity-50 font-medium transition-all duration-200 shadow-md"
                           >
                             Complete
                           </button>
                           <button
-                            onClick={() => updatePatientStatus(patient.p_id, 'cancelled')}
-                            disabled={updating === patient.p_id}
+                            onClick={() => updatePatientStatus(patient.patient_id || patient.p_id || 0, 'cancelled')}
+                            disabled={updating === (patient.patient_id || patient.p_id)}
                             className="px-2 py-1 bg-sky-400 text-white text-xs rounded-lg hover:bg-sky-500 disabled:opacity-50 font-medium transition-all duration-200 shadow-md"
                           >
                             Cancel
