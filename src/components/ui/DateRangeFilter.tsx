@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar } from 'lucide-react';
 
 interface DateRangeFilterProps {
   onDateChange: (fromDate: string, toDate: string) => void;
@@ -21,8 +20,14 @@ export default function DateRangeFilter({ onDateChange, className = '' }: DateRa
     // Set default to today
     setFromDate(maxDate);
     setToDate(maxDate);
-    onDateChange(maxDate, maxDate);
-  }, [maxDate, onDateChange]);
+  }, [maxDate]);
+
+  useEffect(() => {
+    // Only call onDateChange when both dates are set and not empty
+    if (fromDate && toDate) {
+      onDateChange(fromDate, toDate);
+    }
+  }, [fromDate, toDate, onDateChange]);
 
   const handleFromDateChange = (date: string) => {
     setFromDate(date);
@@ -34,39 +39,30 @@ export default function DateRangeFilter({ onDateChange, className = '' }: DateRa
     onDateChange(fromDate, date);
   };
 
-  const formatDisplayDate = (dateStr: string) => {
-    if (!dateStr) return '';
-    const [year, month, day] = dateStr.split('-');
-    return `${day}-${month}-${year}`;
-  };
-
   return (
-    <div className={`flex items-center space-x-4 ${className}`}>
-      <div className="flex items-center space-x-2">
-        <Calendar className="h-4 w-4 text-gray-500" />
-        <span className="text-sm font-medium text-gray-700">From:</span>
+    <div className={`flex flex-col sm:flex-row sm:items-end space-y-4 sm:space-y-0 sm:space-x-4 ${className}`}>
+      <div className="flex-shrink-0">
+        <label className="block text-sm font-medium text-gray-700 mb-2">From Date</label>
         <input
           type="date"
           value={fromDate}
           min={minDate}
           max={maxDate}
           onChange={(e) => handleFromDateChange(e.target.value)}
-          className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="px-3 py-2 w-full sm:w-auto border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
         />
-        <span className="text-xs text-gray-500">{formatDisplayDate(fromDate)}</span>
       </div>
       
-      <div className="flex items-center space-x-2">
-        <span className="text-sm font-medium text-gray-700">To:</span>
+      <div className="flex-shrink-0">
+        <label className="block text-sm font-medium text-gray-700 mb-2">To Date</label>
         <input
           type="date"
           value={toDate}
           min={minDate}
           max={maxDate}
           onChange={(e) => handleToDateChange(e.target.value)}
-          className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="px-3 py-2 w-full sm:w-auto border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
         />
-        <span className="text-xs text-gray-500">{formatDisplayDate(toDate)}</span>
       </div>
     </div>
   );

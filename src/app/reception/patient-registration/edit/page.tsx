@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search, Edit, Eye, FileText, Send, User, Calendar, Phone, MapPin, X } from 'lucide-react';
 import { useToastContext } from '@/context/ToastContext';
 import LastEnrolledPatient from '@/components/LastEnrolledPatient';
@@ -65,10 +65,10 @@ export default function PatientRegistrationEdit() {
     }
   };
 
-  const handleDateChange = (fromDate: string, toDate: string) => {
+  const handleDateChange = useCallback((fromDate: string, toDate: string) => {
     setLoading(true);
     fetchPatients(fromDate, toDate);
-  };
+  }, []);
 
   const handleSendTo = (patient: Patient) => {
     setSelectedPatient(patient);
