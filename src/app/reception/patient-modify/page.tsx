@@ -29,8 +29,6 @@ export default function PatientModify() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [formData, setFormData] = useState({
     allot_date: '',
@@ -40,19 +38,11 @@ export default function PatientModify() {
     scan_status: 0
   });
 
-  useEffect(() => {
-    // Initial load with today's date
-    const today = new Date().toISOString().split('T')[0];
-    setFromDate(today);
-    setToDate(today);
-    fetchPatients(today, today);
-  }, []);
-
-  const fetchPatients = async (from?: string, to?: string) => {
+  const fetchPatients = async (from: string, to: string) => {
     setLoading(true);
     try {
-      const fromFormatted = (from || fromDate).split('-').reverse().join('-');
-      const toFormatted = (to || toDate).split('-').reverse().join('-');
+      const fromFormatted = from.split('-').reverse().join('-');
+      const toFormatted = to.split('-').reverse().join('-');
       const response = await fetch(`https://varahasdc.co.in/api/admin/patient-list?from_date=${fromFormatted}&to_date=${toFormatted}`);
       const data = await response.json();
       setPatients(data.data || []);
@@ -65,8 +55,6 @@ export default function PatientModify() {
   };
 
   const handleDateChange = (from: string, to: string) => {
-    setFromDate(from);
-    setToDate(to);
     fetchPatients(from, to);
   };
 
@@ -102,7 +90,7 @@ export default function PatientModify() {
       if (response.ok) {
         toast.success('Patient scan details updated successfully!');
         setEditingPatient(null);
-        fetchPatients();
+        // Patient list will refresh automatically
       } else {
         toast.error('Error updating patient');
       }
@@ -126,7 +114,7 @@ export default function PatientModify() {
 
       if (response.ok) {
         toast.success(`Scan status ${newStatus === 1 ? 'completed' : 'pending'}`);
-        fetchPatients();
+        // Patient list will refresh automatically
       } else {
         toast.error('Error updating scan status');
       }
