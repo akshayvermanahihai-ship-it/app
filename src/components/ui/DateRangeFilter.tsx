@@ -17,17 +17,11 @@ export default function DateRangeFilter({ onDateChange, className = '' }: DateRa
   const minDate = new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   useEffect(() => {
-    // Set default to today
+    // Set default to today and call onDateChange immediately
     setFromDate(maxDate);
     setToDate(maxDate);
+    onDateChange(maxDate, maxDate);
   }, [maxDate]);
-
-  useEffect(() => {
-    // Only call onDateChange when both dates are set and not empty
-    if (fromDate && toDate) {
-      onDateChange(fromDate, toDate);
-    }
-  }, [fromDate, toDate, onDateChange]);
 
   const handleFromDateChange = (date: string) => {
     setFromDate(date);
