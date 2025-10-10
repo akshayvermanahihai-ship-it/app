@@ -588,7 +588,7 @@ export default function NewPatientRegistration() {
     const selected = scans.filter(scan => newSelectedScans.includes(scan.s_id.toString()));
     setSelectedScans(selected);
     
-    let totalAmount = selected.reduce((sum, scan) => sum + scan.charges, 0);
+    const totalAmount = selected.reduce((sum, scan) => sum + scan.charges, 0);
     const totalTime = selected.reduce((sum, scan) => {
       const timeMatch = scan.estimate_time?.match(/(\d+)/);
       return sum + (timeMatch ? parseInt(timeMatch[1]) : 0);

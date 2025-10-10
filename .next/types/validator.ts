@@ -809,6 +809,12 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   handler satisfies RouteHandlerConfig<"/api/patients/search">
 }
 
+// Validate ../../src/app/api/reception/patients/today/route.ts
+{
+  const handler = {} as typeof import("../../src/app/api/reception/patients/today/route.js")
+  handler satisfies RouteHandlerConfig<"/api/reception/patients/today">
+}
+
 // Validate ../../src/app/api/reception/stats/route.ts
 {
   const handler = {} as typeof import("../../src/app/api/reception/stats/route.js")

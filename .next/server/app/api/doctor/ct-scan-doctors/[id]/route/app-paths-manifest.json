@@ -1,0 +1,3 @@
+{
+  "/api/doctor/ct-scan-doctors/[id]/route": "app/api/doctor/ct-scan-doctors/[id]/route.js"
+}

@@ -472,7 +472,7 @@ export default function PatientReprintOld() {
               </div>
             )}
           </div>
-        )}
+        ) : null}
 
         {patients.length === 0 && searchTerm && !loading && (
           <div className="text-center py-12">

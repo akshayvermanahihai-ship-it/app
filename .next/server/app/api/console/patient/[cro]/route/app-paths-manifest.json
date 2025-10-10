@@ -1,0 +1,3 @@
+{
+  "/api/console/patient/[cro]/route": "app/api/console/patient/[cro]/route.js"
+}
