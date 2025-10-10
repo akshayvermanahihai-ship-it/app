@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Search, Save, User, Calendar, Clock, FileText, CheckCircle, XCircle } from 'lucide-react';
 import { useToastContext } from '@/context/ToastContext';
 import LastEnrolledPatient from '@/components/LastEnrolledPatient';
+import DateRangeFilter from '@/components/ui/DateRangeFilter';
 
 interface Patient {
   p_id: number;
@@ -28,7 +29,8 @@ export default function PatientModify() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [formData, setFormData] = useState({
     allot_date: '',
@@ -39,14 +41,19 @@ export default function PatientModify() {
   });
 
   useEffect(() => {
-    fetchPatients();
-  }, [selectedDate]);
+    // Initial load with today's date
+    const today = new Date().toISOString().split('T')[0];
+    setFromDate(today);
+    setToDate(today);
+    fetchPatients(today, today);
+  }, []);
 
-  const fetchPatients = async () => {
+  const fetchPatients = async (from?: string, to?: string) => {
     setLoading(true);
     try {
-      const formattedDate = selectedDate.split('-').reverse().join('-');
-      const response = await fetch(`https://varahasdc.co.in/api/admin/patient-list?from_date=${formattedDate}&to_date=${formattedDate}`);
+      const fromFormatted = (from || fromDate).split('-').reverse().join('-');
+      const toFormatted = (to || toDate).split('-').reverse().join('-');
+      const response = await fetch(`https://varahasdc.co.in/api/admin/patient-list?from_date=${fromFormatted}&to_date=${toFormatted}`);
       const data = await response.json();
       setPatients(data.data || []);
     } catch (error) {
@@ -55,6 +62,12 @@ export default function PatientModify() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDateChange = (from: string, to: string) => {
+    setFromDate(from);
+    setToDate(to);
+    fetchPatients(from, to);
   };
 
   const filteredPatients = patients.filter(patient =>
@@ -131,8 +144,10 @@ export default function PatientModify() {
       </div>
 
       <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-        <div className="flex flex-col lg:flex-row gap-4 items-center justify-between mb-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-center">
+        <div className="space-y-4 mb-6">
+          <DateRangeFilter onDateChange={handleDateChange} />
+          
+          <div className="flex items-center">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <input
@@ -141,16 +156,6 @@ export default function PatientModify() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Calendar className="h-5 w-5 text-gray-500" />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
           </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Search, Edit, Eye, FileText, Send, User, X } from 'lucide-react';
 import { useToastContext } from '@/context/ToastContext';
 import LastEnrolledPatient from '@/components/LastEnrolledPatient';
+import DateRangeFilter from '@/components/ui/DateRangeFilter';
 
 interface Patient {
   patient_id: number;
@@ -42,9 +43,13 @@ export default function PatientList() {
     fetchPatients();
   }, []);
 
-  const fetchPatients = async () => {
+  const fetchPatients = async (fromDate?: string, toDate?: string) => {
     try {
-      const response = await fetch('https://varahasdc.co.in/api/reception/patients/list');
+      let url = 'https://varahasdc.co.in/api/reception/patients/list';
+      if (fromDate && toDate) {
+        url += `?from=${fromDate}&to=${toDate}`;
+      }
+      const response = await fetch(url);
       
       if (response.ok) {
         const data = await response.json();
@@ -60,6 +65,11 @@ export default function PatientList() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDateChange = (fromDate: string, toDate: string) => {
+    setLoading(true);
+    fetchPatients(fromDate, toDate);
   };
 
   const handleSendTo = (patient: Patient) => {
@@ -163,8 +173,13 @@ export default function PatientList() {
 
         {/* Search and Controls */}
         <div className="bg-white p-6 rounded-xl shadow-lg border border-blue-100 mb-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-medium text-gray-900">Search Patients</h3>
+          <div className="space-y-4 mb-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium text-gray-900">Search Patients</h3>
+            </div>
+            
+            <DateRangeFilter onDateChange={handleDateChange} />
+            
             <div className="flex items-center space-x-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />

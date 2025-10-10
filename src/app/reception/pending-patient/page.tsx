@@ -6,20 +6,27 @@ import { useToastContext } from '@/context/ToastContext';
 import LastEnrolledPatient from '@/components/LastEnrolledPatient';
 
 interface PendingPatient {
-  p_id: number;
-  cro_number: string;
+  patient_id: number;
+  p_id?: number;
+  cro: string;
+  cro_number?: string;
   patient_name: string;
   age: string;
   gender: string;
-  mobile: string;
-  h_name: string;
-  dname: string;
+  mobile?: string;
+  contact_number?: string;
+  h_name?: string;
+  hospital_name?: string;
+  dname?: string;
+  doctor_name?: string;
   category: string;
   date: string;
   amount: number;
+  amount_due?: number;
   address: string;
-  remark: string;
-  scan_type: string;
+  remark?: string;
+  scan_type?: string;
+  scan_status?: number;
 }
 
 export default function PendingPatient() {
@@ -81,8 +88,8 @@ export default function PendingPatient() {
 
   const filteredPatients = patients.filter(patient =>
     (patient.patient_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (patient.cro_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (patient.mobile || '').includes(searchTerm)
+    (patient.cro || patient.cro_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (patient.contact_number || patient.mobile || '').includes(searchTerm)
   );
 
   const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
@@ -149,19 +156,19 @@ export default function PendingPatient() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {paginatedPatients.map((patient, index) => (
-                    <tr key={patient.p_id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={patient.patient_id || patient.p_id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black font-medium">{startIndex + index + 1}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-blue-600">{patient.cro}</div>
+                        <div className="text-sm font-medium text-blue-600">{patient.cro || patient.cro_number || '-'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-black">{patient.patient_name}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.age}, {patient.gender}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.mobile}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.contact_number || patient.mobile || '-'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.address || '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.h_name || '-'}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.dname || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.hospital_name || patient.h_name || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.doctor_name || patient.dname || '-'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.category || '-'}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">₹{patient.amount}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.date}</td>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Search, Printer, FileText } from 'lucide-react';
 import { useToastContext } from '@/context/ToastContext';
 import LastEnrolledPatient from '@/components/LastEnrolledPatient';
@@ -42,7 +42,10 @@ export default function PatientReprintOld() {
   const [printing, setPrinting] = useState<number | null>(null);
 
   const searchPatients = async () => {
-    if (!searchTerm.trim()) return;
+    if (!searchTerm.trim()) {
+      toast.error('Please enter search term');
+      return;
+    }
     
     setLoading(true);
     try {
@@ -51,13 +54,22 @@ export default function PatientReprintOld() {
         const data = await response.json();
         console.log('Search API response:', data); // Debug log
         if (data.success && data.patient) {
+          console.log('Patient data:', data.patient); // Debug patient data
           setPatients([data.patient]); // Wrap single patient in array
+          toast.success('Patient found successfully!');
         } else {
           setPatients([]);
+          toast.error('No patient found with this search term');
         }
+      } else {
+        console.error('API response not ok:', response.status);
+        setPatients([]);
+        toast.error('Error searching patient');
       }
     } catch (error) {
       console.error('Error searching patients:', error);
+      setPatients([]);
+      toast.error('Error searching patient');
     } finally {
       setLoading(false);
     }
@@ -331,8 +343,11 @@ export default function PatientReprintOld() {
           </button>
         </div>
 
-        {patients.length > 0 && (
+        {patients.length > 0 ? (
           <div className="overflow-x-auto">
+            <div className="mb-4 text-sm text-gray-600">
+              Found {patients.length} patient(s)
+            </div>
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
@@ -349,39 +364,45 @@ export default function PatientReprintOld() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {paginatedPatients.map((patient, index) => (
-                  <tr key={patient.patient_id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-black font-medium">{startIndex + index + 1}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-blue-600">{patient.cro_number || patient.cro || patient.patient_id || '-'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-black">{patient.patient_name || patient.firstname || '-'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.age || '-'}y, {patient.gender || '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.mobile || patient.contact_number || '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.hospital_name || patient.h_name || '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.doctor_name || patient.dname || '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-black">₹{patient.amount || 0}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.date || '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => handleReprint(patient)}
-                        disabled={printing === patient.patient_id}
-                        className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 text-xs font-medium disabled:opacity-50 shadow-md"
-                      >
-                        {printing === patient.patient_id ? (
-                          <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
-                        ) : (
-                          <Printer className="h-3 w-3 mr-1" />
-                        )}
-                        <span>Reprint</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {paginatedPatients.map((patient, index) => {
+                  console.log('Rendering patient:', patient);
+                  return (
+                    <tr key={`${patient.patient_id}-${index}`} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black font-medium">{startIndex + index + 1}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-blue-600">{patient.cro || patient.cro_number || patient.patient_id || '-'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-black">{patient.patient_name || patient.firstname || '-'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.age || '-'}y, {patient.gender || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.contact_number || patient.mobile || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.h_name || patient.hospital_name || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.doctor_name || patient.dname || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">₹{patient.amount || 0}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.date || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          onClick={() => handleReprint(patient)}
+                          disabled={printing === patient.patient_id}
+                          className="inline-flex items-center px-3 py-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all duration-200 text-xs font-medium disabled:opacity-50 shadow-md"
+                        >
+                          {printing === patient.patient_id ? (
+                            <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
+                          ) : (
+                            <Printer className="h-3 w-3 mr-1" />
+                          )}
+                          <span>Reprint</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
+            <div className="mt-2 text-xs text-gray-500">
+              Debug: {patients.length} patients found, showing {paginatedPatients.length}
+            </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
