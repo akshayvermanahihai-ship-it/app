@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Search, Edit, Eye, FileText, Send, User, X } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, Edit, Eye, FileText, Send, User, X, RefreshCw } from 'lucide-react';
 import SuperAdminLayout from '@/components/SuperAdminLayout';
+import DateRangeFilter from '@/components/ui/DateRangeFilter';
 
 interface Patient {
   patient_id: number;
@@ -35,14 +36,24 @@ export default function AdminPatientEdit() {
   const [showSendModal, setShowSendModal] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [sendToData, setSendToData] = useState<SendToData>({ destination: 'Nursing', cro: '' });
+  const [currentDateRange, setCurrentDateRange] = useState<{from_date: string, to_date: string} | null>(null);
 
   useEffect(() => {
-    fetchPatients();
-  }, []);
+    if (currentDateRange) {
+      fetchPatients();
+    }
+  }, [currentDateRange]);
 
-  const fetchPatients = async () => {
+  const fetchPatients = useCallback(async () => {
+    if (!currentDateRange) return;
+    
     try {
-      const response = await fetch('https://varahasdc.co.in/api/admin/patient-list');
+      const params = new URLSearchParams({
+        from_date: currentDateRange.from_date,
+        to_date: currentDateRange.to_date
+      });
+      
+      const response = await fetch(`https://varahasdc.co.in/api/admin/patient-list?${params}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -56,7 +67,7 @@ export default function AdminPatientEdit() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentDateRange]);
 
   const handleSendTo = (patient: Patient) => {
     setSelectedPatient(patient);
@@ -159,7 +170,9 @@ export default function AdminPatientEdit() {
     >
       <div className="space-y-6">
         <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-          <div className="flex items-center justify-between mb-6">
+          <DateRangeFilter onDateRangeChange={setCurrentDateRange} />
+          
+          <div className="flex items-center justify-between mt-6 mb-6">
             <h3 className="text-lg font-medium text-gray-900 mb-2">Search Patient to Edit</h3>
             <div className="flex items-center space-x-4">
               <div className="relative">
@@ -174,11 +187,11 @@ export default function AdminPatientEdit() {
               </div>
               <button
                 onClick={fetchPatients}
-                disabled={loading}
+                disabled={loading || !currentDateRange}
                 title="Refresh patient list"
                 className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 disabled:opacity-50 shadow-md"
               >
-                <Search className="h-5 w-5" />
+                <RefreshCw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
                 <span>{loading ? 'Loading...' : 'Refresh'}</span>
               </button>
             </div>

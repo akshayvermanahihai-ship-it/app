@@ -17,11 +17,11 @@ interface Patient {
   dname: string;
   category: string;
   amount: number;
-  scan_status: number;
-  allot_date: string;
-  allot_time: string;
-  scan_type: string;
-  remark: string;
+  scan_status?: number;
+  allot_date?: string;
+  allot_time?: string;
+  scan_type?: string;
+  remark?: string;
 }
 
 export default function PatientModify() {
@@ -61,9 +61,9 @@ export default function PatientModify() {
   };
 
   const filteredPatients = patients.filter(patient =>
-    patient.patient_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    patient.cro.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    patient.contact_number.includes(searchTerm)
+    (patient.patient_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (patient.cro || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (patient.contact_number || '').includes(searchTerm)
   );
 
   const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
@@ -156,74 +156,80 @@ export default function PatientModify() {
         </div>
 
         {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading patients...</p>
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading patients...</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse border border-gray-300">
-              <thead>
-                <tr className="bg-blue-50">
-                  <th className="border border-gray-300 px-4 py-2 text-left">S.No</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">CRO</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Patient Name</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Age/Gender</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Mobile</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Hospital</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Allot Date</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Allot Time</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Scan Type</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Status</th>
-                  <th className="border border-gray-300 px-4 py-2 text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedPatients.map((patient, index) => (
-                  <tr key={patient.patient_id} className="hover:bg-gray-50">
-                    <td className="border border-gray-300 px-4 py-2">{startIndex + index + 1}</td>
-                    <td className="border border-gray-300 px-4 py-2 font-medium">{patient.cro}</td>
-                    <td className="border border-gray-300 px-4 py-2">{patient.patient_name}</td>
-                    <td className="border border-gray-300 px-4 py-2">{patient.age}, {patient.gender}</td>
-                    <td className="border border-gray-300 px-4 py-2">{patient.contact_number}</td>
-                    <td className="border border-gray-300 px-4 py-2">{patient.h_name}</td>
-                    <td className="border border-gray-300 px-4 py-2">{patient.allot_date || '-'}</td>
-                    <td className="border border-gray-300 px-4 py-2">{patient.allot_time || '-'}</td>
-                    <td className="border border-gray-300 px-4 py-2">{patient.scan_type || '-'}</td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      <button
-                        onClick={() => toggleScanStatus(patient)}
-                        className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${
-                          patient.scan_status === 1
-                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                            : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                        }`}
-                      >
-                        {patient.scan_status === 1 ? (
-                          <>
-                            <CheckCircle className="h-3 w-3" />
-                            <span>Completed</span>
-                          </>
-                        ) : (
-                          <>
-                            <XCircle className="h-3 w-3" />
-                            <span>Pending</span>
-                          </>
-                        )}
-                      </button>
-                    </td>
-                    <td className="border border-gray-300 px-4 py-2">
-                      <button
-                        onClick={() => handleEdit(patient)}
-                        className="px-3 py-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 text-xs font-medium shadow-md"
-                      >
-                        Edit Scan
-                      </button>
-                    </td>
+          <>
+            <div className="overflow-x-auto max-h-96 overflow-y-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 sticky top-0">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CRO</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Patient Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Age/Gender</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mobile</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hospital</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Doctor</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {paginatedPatients.map((patient, index) => (
+                    <tr key={patient.patient_id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black font-medium">{startIndex + index + 1}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-blue-600">{patient.cro}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-black">{patient.patient_name}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.age}, {patient.gender}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.contact_number || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.h_name || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.dname || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">{patient.category || '-'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-black">₹{patient.amount}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          onClick={() => toggleScanStatus(patient)}
+                          className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${
+                            patient.scan_status === 1
+                              ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                              : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                          }`}
+                        >
+                          {patient.scan_status === 1 ? (
+                            <>
+                              <CheckCircle className="h-3 w-3" />
+                              <span>Completed</span>
+                            </>
+                          ) : (
+                            <>
+                              <XCircle className="h-3 w-3" />
+                              <span>Pending</span>
+                            </>
+                          )}
+                        </button>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <button
+                          onClick={() => handleEdit(patient)}
+                          className="px-2 py-1 bg-sky-400 text-white text-xs rounded-lg hover:bg-sky-500 font-medium transition-all duration-200 shadow-md"
+                        >
+                          Edit Scan
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
             {/* Pagination */}
             {totalPages > 1 && (
@@ -237,13 +243,13 @@ export default function PatientModify() {
                       <>
                         <button
                           onClick={() => setCurrentPage(1)}
-                          className="px-3 py-2 text-sm font-medium bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+                          className="px-3 py-2 text-sm font-medium bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg hover:from-gray-600 hover:to-gray-700 transition-all duration-200 shadow-md"
                         >
                           First
                         </button>
                         <button
                           onClick={() => setCurrentPage(currentPage - 1)}
-                          className="px-3 py-2 text-sm font-medium bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+                          className="px-3 py-2 text-sm font-medium bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg hover:from-gray-600 hover:to-gray-700 transition-all duration-200 shadow-md"
                         >
                           Previous
                         </button>
@@ -260,10 +266,10 @@ export default function PatientModify() {
                           <button
                             key={page}
                             onClick={() => setCurrentPage(page)}
-                            className={`px-3 py-2 text-sm font-medium rounded-lg ${
+                            className={`px-3 py-2 text-sm font-medium rounded-lg transition-all duration-200 shadow-md ${
                               currentPage === page
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-400 text-white hover:bg-gray-500'
+                                ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white'
+                                : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white hover:from-gray-500 hover:to-gray-600'
                             }`}
                           >
                             {page}
@@ -276,13 +282,13 @@ export default function PatientModify() {
                       <>
                         <button
                           onClick={() => setCurrentPage(currentPage + 1)}
-                          className="px-3 py-2 text-sm font-medium bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+                          className="px-3 py-2 text-sm font-medium bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg hover:from-gray-600 hover:to-gray-700 transition-all duration-200 shadow-md"
                         >
                           Next
                         </button>
                         <button
                           onClick={() => setCurrentPage(totalPages)}
-                          className="px-3 py-2 text-sm font-medium bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+                          className="px-3 py-2 text-sm font-medium bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg hover:from-gray-600 hover:to-gray-700 transition-all duration-200 shadow-md"
                         >
                           Last
                         </button>
@@ -292,7 +298,7 @@ export default function PatientModify() {
                 </div>
               </div>
             )}
-
+            
             {filteredPatients.length === 0 && (
               <div className="text-center py-12">
                 <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -300,6 +306,8 @@ export default function PatientModify() {
                 <p className="text-gray-500">No patients found for the selected date.</p>
               </div>
             )}
+          </>
+        )}
           </div>
         )}
       </div>

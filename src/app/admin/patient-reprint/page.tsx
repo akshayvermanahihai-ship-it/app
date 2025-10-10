@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Search, Printer, FileText, User } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, Printer, FileText, User, RefreshCw } from 'lucide-react';
 import SuperAdminLayout from '@/components/SuperAdminLayout';
+import DateRangeFilter from '@/components/ui/DateRangeFilter';
 
 interface ScanDetail {
   name: string;
@@ -46,15 +47,25 @@ export default function PatientReprint() {
   const [error, setError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [currentDateRange, setCurrentDateRange] = useState<{from_date: string, to_date: string} | null>(null);
 
   useEffect(() => {
-    fetchPatientList();
-  }, []);
+    if (currentDateRange) {
+      fetchPatientList();
+    }
+  }, [currentDateRange]);
 
-  const fetchPatientList = async () => {
+  const fetchPatientList = useCallback(async () => {
+    if (!currentDateRange) return;
+    
     setLoading(true);
     try {
-      const response = await fetch('https://varahasdc.co.in/api/admin/patient-list');
+      const params = new URLSearchParams({
+        from_date: currentDateRange.from_date,
+        to_date: currentDateRange.to_date
+      });
+      
+      const response = await fetch(`https://varahasdc.co.in/api/admin/patient-list?${params}`);
       const data = await response.json();
       
       if (data.success) {
@@ -65,7 +76,7 @@ export default function PatientReprint() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentDateRange]);
 
   const handleSearch = async () => {
     if (!searchCRO.trim()) {
@@ -338,6 +349,11 @@ export default function PatientReprint() {
       subtitle="Reprint Patient Receipt"
     >
       <div className="space-y-6">
+        {/* Date Range Filter */}
+        <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+          <DateRangeFilter onDateRangeChange={setCurrentDateRange} />
+        </div>
+
         {/* Search Section */}
         <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
           <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
@@ -358,7 +374,7 @@ export default function PatientReprint() {
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               />
             </div>
-            <div className="flex items-end">
+            <div className="flex items-end space-x-2">
               <button
                 onClick={handleSearch}
                 disabled={loading}
@@ -366,6 +382,13 @@ export default function PatientReprint() {
               >
                 <Search className="h-4 w-4 mr-2" />
                 {loading ? 'Searching...' : 'Submit'}
+              </button>
+              <button
+                onClick={fetchPatientList}
+                disabled={loading || !currentDateRange}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors disabled:opacity-50 flex items-center"
+              >
+                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               </button>
             </div>
           </div>

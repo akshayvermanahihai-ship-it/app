@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Users, Search, Download, Eye, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Users, Search, Download, Eye, ChevronLeft, ChevronRight, Filter, RefreshCw } from 'lucide-react';
 import SuperAdminLayout, { Card, Table, TableHeader, TableHeaderCell, TableBody, TableRow, TableCell, Button, Pagination } from '@/components/SuperAdminLayout';
+import DateRangeFilter from '@/components/ui/DateRangeFilter';
 
 interface PatientData {
   patient_id: number;
@@ -31,25 +32,22 @@ export default function PatientList() {
   const [selectedPatient, setSelectedPatient] = useState<PatientData | null>(null);
   const [showViewDialog, setShowViewDialog] = useState(false);
   
-  // Set current date only
-  const today = new Date();
-  const currentDate = today.toISOString().split('T')[0];
-  const [dateFilter] = useState({
-    from_date: currentDate,
-    to_date: currentDate
-  });
+  const [currentDateRange, setCurrentDateRange] = useState<{from_date: string, to_date: string} | null>(null);
 
   useEffect(() => {
-    fetchPatients();
-  }, []);
+    if (currentDateRange) {
+      fetchPatients();
+    }
+  }, [currentDateRange]);
 
-  const fetchPatients = async () => {
+  const fetchPatients = useCallback(async () => {
+    if (!currentDateRange) return;
+    
     setLoading(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
       const params = new URLSearchParams({
-        from_date: today,
-        to_date: today
+        from_date: currentDateRange.from_date,
+        to_date: currentDateRange.to_date
       });
       
       const response = await fetch(`https://varahasdc.co.in/api/admin/patient-list?${params}`);
@@ -63,7 +61,7 @@ export default function PatientList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentDateRange]);
 
   const handleViewPatient = (patient: PatientData) => {
     setSelectedPatient(patient);
@@ -93,7 +91,7 @@ export default function PatientList() {
         <body>
           <table>
             <tr><th colspan="10" class="header">VARAHA SDC</th></tr>
-            <tr><th colspan="10" class="header">PATIENT LIST (${formatDate(dateFilter.from_date)} to ${formatDate(dateFilter.to_date)})</th></tr>
+            <tr><th colspan="10" class="header">PATIENT LIST (${formatDate(currentDateRange?.from_date || '')} to ${formatDate(currentDateRange?.to_date || '')})</th></tr>
             <thead>
               <tr>
                 ${headers.map(header => `<th>${header}</th>`).join('')}
@@ -124,7 +122,7 @@ export default function PatientList() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Patient-List-${formatDate(dateFilter.from_date)}-to-${formatDate(dateFilter.to_date)}.xls`;
+    a.download = `Patient-List-${formatDate(currentDateRange?.from_date || '')}-to-${formatDate(currentDateRange?.to_date || '')}.xls`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -168,15 +166,27 @@ export default function PatientList() {
       </div>
 
       <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-        <div className="flex items-center space-x-2 mb-4">
-          <Search className="h-5 w-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by patient name or CRO..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-          />
+        <DateRangeFilter onDateRangeChange={setCurrentDateRange} />
+        
+        <div className="flex items-center justify-between mt-4">
+          <div className="flex items-center space-x-2 flex-1">
+            <Search className="h-5 w-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by patient name or CRO..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            />
+          </div>
+          <button
+            onClick={fetchPatients}
+            disabled={loading || !currentDateRange}
+            className="ml-4 flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
         </div>
       </div>
 
