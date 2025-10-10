@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { User, Calendar, FileText, Plus, ArrowLeft, ArrowRight, Check, ChevronDown } from 'lucide-react';
 import SuperAdminLayout from '@/components/SuperAdminLayout';
 import LastEnrolledPatient from '@/components/LastEnrolledPatient';
+import { useToastContext } from '@/context/ToastContext';
 
 interface FormData {
   // Step 1 - Enrollment Details
@@ -55,7 +56,10 @@ interface Scan {
 }
 
 export default function AdminPatientNew() {
+  const toast = useToastContext();
   const [currentStep, setCurrentStep] = useState(1);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editPatientId, setEditPatientId] = useState<string | null>(null);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [scans, setScans] = useState<Scan[]>([]);
@@ -73,6 +77,8 @@ export default function AdminPatientNew() {
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [lastPatient, setLastPatient] = useState<{cro: string, patient_name: string} | null>(null);
   const [timeSlots, setTimeSlots] = useState<{time_id: number, time_slot: string}[]>([]);
+  const [isSaved, setIsSaved] = useState(false);
+  const [savedPatientData, setSavedPatientData] = useState<any>(null);
   
   const [formData, setFormData] = useState<FormData>({
     date: new Date().toLocaleDateString('en-GB').split('/').reverse().join('-'),
@@ -107,6 +113,15 @@ export default function AdminPatientNew() {
     fetchScans();
     fetchTimeSlots();
     fetchLastPatient();
+    
+    // Check for edit mode
+    const urlParams = new URLSearchParams(window.location.search);
+    const editId = urlParams.get('edit');
+    if (editId) {
+      setIsEditMode(true);
+      setEditPatientId(editId);
+      fetchPatientData(editId);
+    }
 
     // Close dropdowns when clicking outside
     const handleClickOutside = (event: MouseEvent) => {
@@ -163,20 +178,33 @@ export default function AdminPatientNew() {
 
   const fetchTimeSlots = async () => {
     try {
-      // Generate time slots from 7 AM to 6 PM
-      const slots = [];
-      for (let hour = 7; hour < 18; hour++) {
-        for (let minute = 0; minute < 60; minute += 15) {
-          const time24 = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-          const timeAMPM = formatTimeToAMPM(time24);
-          slots.push({ time_id: slots.length + 1, time_slot: timeAMPM });
-        }
+      const response = await fetch('https://varahasdc.co.in/api/admin/time-slots');
+      if (response.ok) {
+        const data = await response.json();
+        const slots = Array.isArray(data) ? data : [];
+        setTimeSlots(slots);
+      } else {
+        generateFallbackTimeSlots();
       }
-      setTimeSlots(slots);
     } catch (error) {
-      console.error('Error generating time slots:', error);
-      setTimeSlots([]);
+      console.error('Error fetching time slots:', error);
+      generateFallbackTimeSlots();
     }
+  };
+
+  const generateFallbackTimeSlots = () => {
+    const fallbackSlots = [];
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute = 0; minute < 60; minute += 15) {
+        const time24 = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        const timeAMPM = formatTimeToAMPM(time24);
+        fallbackSlots.push({
+          time_id: fallbackSlots.length + 1,
+          time_slot: timeAMPM
+        });
+      }
+    }
+    setTimeSlots(fallbackSlots);
   };
 
   const fetchLastPatient = async () => {
@@ -188,6 +216,20 @@ export default function AdminPatientNew() {
       }
     } catch (error) {
       console.error('Error fetching last patient:', error);
+    }
+  };
+
+  const [patientData, setPatientData] = useState<any>(null);
+
+  const fetchPatientData = async (patientId: string) => {
+    try {
+      const response = await fetch(`https://varahasdc.co.in/api/admin/patients/${patientId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setPatientData(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching patient data:', error);
     }
   };
 
@@ -204,6 +246,27 @@ export default function AdminPatientNew() {
     if (name === 'petient_type') {
       const freeCategories = ['IPD FREE', 'OPD FREE', 'RTA', 'RGHS', 'Chiranjeevi', 'Destitute', 'PRISONER', 'Sn. CITIZEN', 'Aayushmaan'];
       setShowUniId(freeCategories.includes(value));
+      
+      // Recalculate amounts based on category
+      const scanAmount = selectedScans.reduce((sum, scan) => sum + scan.charges, 0);
+      
+      if (value === 'GEN / Paid') {
+        setFormData(prev => ({
+          ...prev,
+          total_amount: scanAmount.toString(),
+          amount: scanAmount.toString(),
+          rec_amount: scanAmount.toString(),
+          due_amount: '0'
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          total_amount: scanAmount.toString(),
+          amount: scanAmount.toString(),
+          rec_amount: '0',
+          due_amount: '0'
+        }));
+      }
     }
   };
 
@@ -290,34 +353,38 @@ export default function AdminPatientNew() {
     const selected = scans.filter(scan => newSelectedScans.includes(scan.s_id.toString()));
     setSelectedScans(selected);
     
-    let totalAmount = selected.reduce((sum, scan) => sum + scan.charges, 0);
+    const totalAmount = selected.reduce((sum, scan) => sum + scan.charges, 0);
     const totalTime = selected.reduce((sum, scan) => {
       const timeMatch = scan.estimate_time?.match(/(\d+)/);
       return sum + (timeMatch ? parseInt(timeMatch[1]) : 0);
     }, 0);
     
-    // Free categories get 0 amount
-    const freeCategories = ['Destitute', 'Chiranjeevi', 'RGHS', 'RTA', 'OPD FREE', 'IPD FREE', 'BPL/POOR', 'Sn. CITIZEN', 'BHAMASHAH', 'JSSY', 'PRISONER', 'Aayushmaan'];
-    if (freeCategories.includes(formData.petient_type)) {
-      totalAmount = 0;
-    }
+    const scanAmount = totalAmount;
     
     setFormData(prev => {
-      const newFormData = {
-        ...prev,
-        amount: totalAmount.toString(),
-        est_time: totalTime.toString(),
-        total_amount: totalAmount.toString()
-      };
+      let newFormData;
       
-      const received = parseFloat(prev.rec_amount) || 0;
-      const discount = parseFloat(prev.dis_amount) || 0;
-      const due = totalAmount - received - discount;
+      if (prev.petient_type === 'GEN / Paid') {
+        newFormData = {
+          ...prev,
+          amount: scanAmount.toString(),
+          est_time: totalTime.toString(),
+          total_amount: scanAmount.toString(),
+          rec_amount: scanAmount.toString(),
+          due_amount: '0'
+        };
+      } else {
+        newFormData = {
+          ...prev,
+          amount: scanAmount.toString(),
+          est_time: totalTime.toString(),
+          total_amount: scanAmount.toString(),
+          rec_amount: '0',
+          due_amount: '0'
+        };
+      }
       
-      return {
-        ...newFormData,
-        due_amount: due.toString()
-      };
+      return newFormData;
     });
     
     // Auto calculate time out if time in is selected
@@ -339,19 +406,41 @@ export default function AdminPatientNew() {
     const newErrors: {[key: string]: string} = {};
     
     if (step === 1) {
-      if (!formData.hospital_name) newErrors.hospital_name = 'Hospital Name is required';
-      if (!formData.doctor_name) newErrors.doctor_name = 'Doctor Name is required';
-      if (!formData.firstname.trim()) newErrors.firstname = 'Patient Name is required';
-      if (!formData.age.trim()) newErrors.age = 'Age is required';
+      if (!formData.hospital_name) {
+        newErrors.hospital_name = 'Hospital Name is required';
+        toast.error('Please select Hospital Name');
+      }
+      if (!formData.doctor_name) {
+        newErrors.doctor_name = 'Doctor Name is required';
+        toast.error('Please select Doctor Name');
+      }
+      if (!formData.firstname.trim()) {
+        newErrors.firstname = 'Patient Name is required';
+        toast.error('Please enter Patient Name');
+      }
+      if (!formData.age.trim()) {
+        newErrors.age = 'Age is required';
+        toast.error('Please enter Age');
+      }
       if (formData.contact_number && !/^[0-9]{10}$/.test(formData.contact_number)) {
         newErrors.contact_number = 'Contact Number must be 10 digits';
+        toast.error('Contact Number must be 10 digits');
       }
     }
     
     if (step === 2) {
-      if (formData.type_of_scan.length === 0) newErrors.type_of_scan = 'At least one scan type is required';
-      if (!formData.time) newErrors.time = 'Time In is required';
-      if (!formData.time_in) newErrors.time_in = 'Time Out is required';
+      if (formData.type_of_scan.length === 0) {
+        newErrors.type_of_scan = 'At least one scan type is required';
+        toast.error('Please select at least one scan type');
+      }
+      if (!formData.time) {
+        newErrors.time = 'Time In is required';
+        toast.error('Please select Time In');
+      }
+      if (!formData.time_in) {
+        newErrors.time_in = 'Time Out is required';
+        toast.error('Please select Time Out');
+      }
     }
     
     setErrors(newErrors);
@@ -373,6 +462,17 @@ export default function AdminPatientNew() {
   };
 
   const handleSubmit = async (action: string) => {
+    if (action === 'Print') {
+      if (savedPatientData) {
+        printReceipt(savedPatientData);
+        toast.info('Receipt printed successfully!');
+        setTimeout(() => {
+          window.location.href = '/admin/patient-new';
+        }, 2000);
+      }
+      return;
+    }
+
     try {
       const submitData = {
         hospital_name: formData.hospital_name,
@@ -401,32 +501,35 @@ export default function AdminPatientNew() {
         action: action
       };
 
-      const response = await fetch('https://varahasdc.co.in/api/admin/patients', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(submitData)
-      });
+      let response;
+      if (isEditMode && editPatientId) {
+        response = await fetch(`https://varahasdc.co.in/api/admin/patients/${editPatientId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(submitData)
+        });
+      } else {
+        response = await fetch('https://varahasdc.co.in/api/admin/patients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(submitData)
+        });
+      }
       
       if (response.ok) {
         const result = await response.json();
-        const cro = result.data?.cro || 'Registered';
+        const cro = result.data?.cro || (isEditMode ? 'Updated' : 'Registered');
         
-        alert(`Patient registered successfully! CRO: ${cro}`);
-        
-        if (action === 'Save_Print') {
-          printReceipt(result.data);
-        }
-        
-        if (action === 'Save') {
-          resetForm();
-        }
+        setIsSaved(true);
+        setSavedPatientData(result.data);
+        toast.success(`Patient ${isEditMode ? 'updated' : 'registered'} successfully! CRO: ${cro}`);
       } else {
         const errorData = await response.json().catch(() => ({}));
-        alert(`Error: ${errorData.error || 'Failed to register patient'}`);
+        toast.error(`Error: ${errorData.error || (isEditMode ? 'Failed to update patient' : 'Failed to register patient')}`);
       }
     } catch (error) {
       console.error('Error saving patient:', error);
-      alert('Error saving patient');
+      toast.error(isEditMode ? 'Error updating patient' : 'Error saving patient');
     }
   };
 
@@ -468,73 +571,160 @@ export default function AdminPatientNew() {
     fetchLastPatient();
   };
 
+  const numberToWords = (num: number): string => {
+    const ones = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+    const teens = ['ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+    const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+    
+    if (num === 0) return 'zero';
+    if (num < 10) return ones[num];
+    if (num < 20) return teens[num - 10];
+    if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? ' ' + ones[num % 10] : '');
+    if (num < 1000) return ones[Math.floor(num / 100)] + ' hundred' + (num % 100 ? ' ' + numberToWords(num % 100) : '');
+    if (num < 100000) return numberToWords(Math.floor(num / 1000)) + ' thousand' + (num % 1000 ? ' ' + numberToWords(num % 1000) : '');
+    
+    return num.toString();
+  };
+
   const printReceipt = (patientData: any) => {
     const currentDate = new Date().toLocaleDateString('en-GB');
     const investigations = selectedScans.map(scan => scan.s_name).join(', ');
+    const amountInWords = numberToWords(parseInt(formData.rec_amount || formData.total_amount)).toUpperCase();
     
     const printContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Patient Receipt - ${patientData.cro || 'New Patient'}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 10px; }
-            .admission_form { text-align: center; color: #000000; font-size: 14px; width: 100%; }
-            .admission_form table { width: 100%; font-size: 10px; margin: -5px 0px; }
-            .form_input { padding: 2px 1%; font-size: 16px; border: none; font-weight: bold; }
-          </style>
-        </head>
-        <body>
-          <div class="admission_form" style="border:solid thin; margin-top:20px;">
-            <table>
-              <tr><td colspan="6" align="center">Dr. S.N. MEDICL COLLEGE AND ATTACHED GROUP OF HOSPITAL, JODHPUR</td></tr>
-              <tr><td colspan="6" align="center">VARAHA SDC - 256 SLICE CT SCAN</td></tr>
-              <tr><td colspan="6" align="center">Cash Receipt</td></tr>
-            </table>
-            <table>
-              <tr>
-                <td width="80">Reg.No :</td>
-                <td><input type="text" class="form_input" value="${patientData.cro || ''}"></td>
-                <td width="30">Date</td>
-                <td><input type="text" class="form_input" value="${currentDate}"></td>
-              </tr>
-            </table>
-            <table>
-              <tr>
-                <td width="130">Name Of Patient :</td>
-                <td><input type="text" class="form_input" value="${formData.pre} ${formData.firstname}"></td>
-                <td>Age :</td>
-                <td><input type="text" class="form_input" value="${formData.age} ${formData.age_type}"></td>
-                <td>Gender</td>
-                <td><input type="text" class="form_input" value="${formData.gender}"></td>
-              </tr>
-            </table>
-            <table>
-              <tr>
-                <td width="80">Investiations:</td>
-                <td><input type="text" class="form_input" value="${investigations}"></td>
-              </tr>
-            </table>
-            <table>
-              <tr>
-                <td width="150">For Sum Of Rupees:</td>
-                <td><input type="text" class="form_input" value="Rs. ${formData.total_amount}/-"></td>
-                <td width="150"><input type="text" value="Rs. ${formData.total_amount}" style="border:2px solid;"></td>
-              </tr>
-            </table>
-          </div>
-        </body>
-      </html>
-    `;
+<!DOCTYPE html>
+<html>
+<head>
+<title>Receipt - ${patientData.cro || 'New Patient'}</title>
+<style>
+.admission_form { text-align: center; color: #000000; font-size: 10px; width: 100%; }
+.admission_form table { width: 98%; font-size: 10px; margin: -5px 8px; }
+.admission_form .form_input { padding: 2px 1%; font-size: 10px; border: none; font-weight: bold; font-style: italic; width: 99%; border-bottom: 1px dotted #000000; }
+.admission_form .form_input_box { border-bottom: 0px dotted #000000; padding: 0px 0px 2px 0px; width: 100%; display: inline-block; }
+@media print { .no_print, .no_print * { display: none !important; } .admission_div_desc { border: 0px !important; } .page_break { page-break-after: always; } }
+</style>
+</head>
+<body bgcolor="#FFFFFF" leftmargin="0" topmargin="0" marginwidth="0" marginheight="0" onload="window.print(); setTimeout(() => window.close(), 1000);">
+<div class="admission_form" align="center" style="border:solid thin; margin-top:18px;width:93.0%;margin-left:30px;">
+  <table align="center" style="margin-top:2px;">
+    <tr><td colspan="6"><b>Dr. S.N. MEDICAL COLLEGE AND ATTACHED GROUP OF HOSPITAL, JODHPUR</b></td></tr>
+    <tr><td colspan="6"><b>Rajasthan Medical Relief Society, M.D.M. Hospital, Jodhpur</b></td></tr>
+    <tr><td colspan="6"><b>IMAGING CENTRE UNDER P.P.P.MODE : VARAHA SDC</b></td></tr>
+    <tr><td colspan="6"><b>256 SLICE DUAL ENERGY CT SCAN, M.D.M HOSPITAL Jodhpur(Raj.) - 342003</b></td></tr>
+    <tr><td colspan="6"><b>Tel. : +91-291-2648120 , 0291-2648121 , 0291-2648122</b></td></tr>
+  </table>
+  
+  <table>
+    <tr>
+      <td width="55">Reg.No :</td>
+      <td width="200"><span class="form_input_box"><input type="text" class="form_input" value="${patientData.cro || ''}(${patientData.patient_id || ''})"></span></td>
+      <td colspan="6"><span style="margin-left:30%; border: 1px solid #02C; border-radius: 11px;padding: 3px 15px;">Cash Receipt</span></td>
+      <td width="36">Date</td>
+      <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="${currentDate}"></span></td>
+    </tr>
+  </table>
+  
+  <table>
+    <tr>
+      <td width="78">Patient Name:</td>
+      <td width="650"><span class="form_input_box"><input type="text" class="form_input" value="${formData.pre} ${formData.firstname}"></span></td>
+      <td width="33">Age :</td>
+      <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="${formData.age}"></span></td>
+      <td width="36">Gender</td>
+      <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="${formData.gender}"></span></td>
+    </tr>
+  </table>
+  
+  <table>
+    <tr>
+      <td width="59">Investigations:</td>
+      <td width="1042"><span class="form_input_box"><input type="text" class="form_input" value="${investigations}"></span></td>
+    </tr>
+  </table>
+  
+  <table>
+    <tr>
+      <td width="129">For Sum Of Rupees:</td>
+      <td width="733"><span class="form_input_box"><input type="text" class="form_input" value="${amountInWords} RUPEES ONLY"></span></td>
+      <td width="147"><label>Scan Amount</label><input type="text" value="₹ ${formData.total_amount}" style="border:1px solid #5E60AE;"></td>
+      <td width="147"><label>Received Amount</label><input type="text" value="₹ ${formData.rec_amount}" style="border:1px solid #5E60AE;"></td>
+    </tr>
+  </table>
+  
+  <table>
+    <tr>
+      <td colspan="6" align="right" style="padding-top: 20px;">For Varaha SDC, Jodhpur</td>
+    </tr>
+    <tr>
+      <td colspan="6" align="right" style="padding-top: 30px;">Signature</td>
+    </tr>
+  </table>
+</div>
+
+<div style="page-break-before: always;"></div>
+
+<div class="admission_form" align="center" style="border:solid thin; margin-top:18px;width:93.0%;margin-left:30px;">
+  <table align="center" style="margin-top:2px;">
+    <tr><td colspan="6"><b>Dr. S.N. MEDICAL COLLEGE AND ATTACHED GROUP OF HOSPITAL, JODHPUR</b></td></tr>
+    <tr><td colspan="6"><b>Rajasthan Medical Relief Society, M.D.M. Hospital, Jodhpur</b></td></tr>
+    <tr><td colspan="6"><b>IMAGING CENTRE UNDER P.P.P.MODE : VARAHA SDC</b></td></tr>
+    <tr><td colspan="6"><b>256 SLICE DUAL ENERGY CT SCAN, M.D.M HOSPITAL Jodhpur(Raj.) - 342003</b></td></tr>
+    <tr><td colspan="6"><b>Tel. : +91-291-2648120 , 0291-2648121 , 0291-2648122</b></td></tr>
+  </table>
+  
+  <table>
+    <tr>
+      <td width="55">Reg.No :</td>
+      <td width="200"><span class="form_input_box"><input type="text" class="form_input" value="${patientData.cro || ''}(${patientData.patient_id || ''})"></span></td>
+      <td colspan="6"><span style="margin-left:30%; border: 1px solid #02C; border-radius: 11px;padding: 3px 15px;">Cash Receipt</span></td>
+      <td width="36">Date</td>
+      <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="${currentDate}"></span></td>
+    </tr>
+  </table>
+  
+  <table>
+    <tr>
+      <td width="78">Patient Name:</td>
+      <td width="650"><span class="form_input_box"><input type="text" class="form_input" value="${formData.pre} ${formData.firstname}"></span></td>
+      <td width="33">Age :</td>
+      <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="${formData.age}"></span></td>
+      <td width="36">Gender</td>
+      <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="${formData.gender}"></span></td>
+    </tr>
+  </table>
+  
+  <table>
+    <tr>
+      <td width="59">Investigations:</td>
+      <td width="1042"><span class="form_input_box"><input type="text" class="form_input" value="${investigations}"></span></td>
+    </tr>
+  </table>
+  
+  <table>
+    <tr>
+      <td width="129">For Sum Of Rupees:</td>
+      <td width="733"><span class="form_input_box"><input type="text" class="form_input" value="${amountInWords} RUPEES ONLY"></span></td>
+      <td width="147"><label>Scan Amount</label><input type="text" value="₹ ${formData.total_amount}" style="border:1px solid #5E60AE;"></td>
+      <td width="147"><label>Received Amount</label><input type="text" value="₹ ${formData.rec_amount}" style="border:1px solid #5E60AE;"></td>
+    </tr>
+  </table>
+  
+  <table>
+    <tr>
+      <td colspan="6" align="right" style="padding-top: 20px;">For Varaha SDC, Jodhpur</td>
+    </tr>
+    <tr>
+      <td colspan="6" align="right" style="padding-top: 30px;">Signature</td>
+    </tr>
+  </table>
+</div>
+</body>
+</html>`;
     
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    const printWindow = window.open('', '_blank');
     if (printWindow) {
       printWindow.document.write(printContent);
       printWindow.document.close();
-      setTimeout(() => {
-        printWindow.focus();
-        printWindow.print();
-      }, 100);
     }
   };
 
@@ -1176,28 +1366,24 @@ export default function AdminPatientNew() {
                     <button
                       type="button"
                       onClick={() => handleSubmit('Save')}
-                      className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-lg transition-all duration-200"
+                      disabled={isSaved}
+                      className="flex items-center space-x-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg transition-all duration-200"
                     >
                       <Check className="h-5 w-5" />
-                      <span>SAVE</span>
+                      <span>{isSaved ? 'SAVED' : 'SAVE'}</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (!isPrintEnabled()) {
-                          alert('Please complete payment before printing receipt');
-                          return;
-                        }
-                        handleSubmit('Save_Print');
-                      }}
-                      disabled={!isPrintEnabled()}
+                      onClick={() => handleSubmit('Print')}
+                      disabled={!isSaved}
                       className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-lg transition-all duration-200"
+                      title={isSaved ? 'Print Receipt' : 'Save patient first to enable printing'}
                     >
                       <FileText className="h-5 w-5" />
                       <span>PRINT</span>
                     </button>
                   </>
-                )}
+                )
               </div>
             </div>
           </form>
