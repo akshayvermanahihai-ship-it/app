@@ -38,6 +38,7 @@ export default function PatientList() {
   const [showSendModal, setShowSendModal] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [sendToData, setSendToData] = useState<SendToData>({ destination: 'Nursing', cro: '' });
+  const [currentDateRange, setCurrentDateRange] = useState<{from: string, to: string} | null>(null);
 
   useEffect(() => {
     fetchPatients();
@@ -68,6 +69,7 @@ export default function PatientList() {
   };
 
   const handleDateChange = useCallback((fromDate: string, toDate: string) => {
+    setCurrentDateRange({ from: fromDate, to: toDate });
     setLoading(true);
     fetchPatients(fromDate, toDate);
   }, []);
@@ -89,7 +91,7 @@ export default function PatientList() {
       if (response.ok) {
         toast.success(`Patient sent to ${sendToData.destination} successfully!`);
         setShowSendModal(false);
-        fetchPatients(); // Refresh list
+        currentDateRange ? fetchPatients(currentDateRange.from, currentDateRange.to) : fetchPatients(); // Refresh list
       }
     } catch (error) {
       toast.error('Error sending patient');
@@ -192,7 +194,7 @@ export default function PatientList() {
                 />
               </div>
               <button
-                onClick={() => fetchPatients()}
+                onClick={() => currentDateRange ? fetchPatients(currentDateRange.from, currentDateRange.to) : fetchPatients()}
                 disabled={loading}
                 title="Refresh patient list"
                 className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 shadow-md"

@@ -7,14 +7,14 @@ import LastEnrolledPatient from '@/components/LastEnrolledPatient';
 import DateRangeFilter from '@/components/ui/DateRangeFilter';
 
 interface Patient {
-  p_id: number;
-  cro_number: string;
+  patient_id: number;
+  cro: string;
   patient_name: string;
   age: string;
   gender: string;
-  mobile: string;
-  hospital_name: string;
-  doctor_name: string;
+  contact_number: string;
+  h_name: string;
+  dname: string;
   category: string;
   amount: number;
   scan_status: number;
@@ -29,6 +29,8 @@ export default function PatientModify() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [formData, setFormData] = useState({
     allot_date: '',
@@ -60,9 +62,13 @@ export default function PatientModify() {
 
   const filteredPatients = patients.filter(patient =>
     patient.patient_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    patient.cro_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    patient.mobile.includes(searchTerm)
+    patient.cro.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    patient.contact_number.includes(searchTerm)
   );
+
+  const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedPatients = filteredPatients.slice(startIndex, startIndex + itemsPerPage);
 
   const handleEdit = (patient: Patient) => {
     setEditingPatient(patient);
@@ -81,7 +87,7 @@ export default function PatientModify() {
 
     setLoading(true);
     try {
-      const response = await fetch(`https://varahasdc.co.in/api/admin/patients/${editingPatient.p_id}`, {
+      const response = await fetch(`https://varahasdc.co.in/api/admin/patients/${editingPatient.patient_id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -106,7 +112,7 @@ export default function PatientModify() {
     const newStatus = patient.scan_status === 1 ? 0 : 1;
     
     try {
-      const response = await fetch(`https://varahasdc.co.in/api/admin/patients/${patient.p_id}`, {
+      const response = await fetch(`https://varahasdc.co.in/api/admin/patients/${patient.patient_id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scan_status: newStatus })
@@ -173,14 +179,14 @@ export default function PatientModify() {
                 </tr>
               </thead>
               <tbody>
-                {filteredPatients.map((patient, index) => (
-                  <tr key={patient.p_id} className="hover:bg-gray-50">
-                    <td className="border border-gray-300 px-4 py-2">{index + 1}</td>
-                    <td className="border border-gray-300 px-4 py-2 font-medium">{patient.cro_number}</td>
+                {paginatedPatients.map((patient, index) => (
+                  <tr key={patient.patient_id} className="hover:bg-gray-50">
+                    <td className="border border-gray-300 px-4 py-2">{startIndex + index + 1}</td>
+                    <td className="border border-gray-300 px-4 py-2 font-medium">{patient.cro}</td>
                     <td className="border border-gray-300 px-4 py-2">{patient.patient_name}</td>
                     <td className="border border-gray-300 px-4 py-2">{patient.age}, {patient.gender}</td>
-                    <td className="border border-gray-300 px-4 py-2">{patient.mobile}</td>
-                    <td className="border border-gray-300 px-4 py-2">{patient.hospital_name}</td>
+                    <td className="border border-gray-300 px-4 py-2">{patient.contact_number}</td>
+                    <td className="border border-gray-300 px-4 py-2">{patient.h_name}</td>
                     <td className="border border-gray-300 px-4 py-2">{patient.allot_date || '-'}</td>
                     <td className="border border-gray-300 px-4 py-2">{patient.allot_time || '-'}</td>
                     <td className="border border-gray-300 px-4 py-2">{patient.scan_type || '-'}</td>
@@ -219,6 +225,74 @@ export default function PatientModify() {
               </tbody>
             </table>
 
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="px-6 py-4 border-t border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-gray-700">
+                    Page {currentPage} of {totalPages} | Total: {filteredPatients.length} records
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {currentPage > 1 && (
+                      <>
+                        <button
+                          onClick={() => setCurrentPage(1)}
+                          className="px-3 py-2 text-sm font-medium bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+                        >
+                          First
+                        </button>
+                        <button
+                          onClick={() => setCurrentPage(currentPage - 1)}
+                          className="px-3 py-2 text-sm font-medium bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+                        >
+                          Previous
+                        </button>
+                      </>
+                    )}
+                    
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        const startPage = Math.max(1, currentPage - 2);
+                        const page = startPage + i;
+                        if (page > totalPages) return null;
+                        
+                        return (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-2 text-sm font-medium rounded-lg ${
+                              currentPage === page
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-400 text-white hover:bg-gray-500'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    {currentPage < totalPages && (
+                      <>
+                        <button
+                          onClick={() => setCurrentPage(currentPage + 1)}
+                          className="px-3 py-2 text-sm font-medium bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+                        >
+                          Next
+                        </button>
+                        <button
+                          onClick={() => setCurrentPage(totalPages)}
+                          className="px-3 py-2 text-sm font-medium bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+                        >
+                          Last
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {filteredPatients.length === 0 && (
               <div className="text-center py-12">
                 <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -246,7 +320,7 @@ export default function PatientModify() {
 
             <div className="mb-4">
               <p className="text-sm text-gray-600">Patient: {editingPatient.patient_name}</p>
-              <p className="text-sm text-gray-600">CRO: {editingPatient.cro_number}</p>
+              <p className="text-sm text-gray-600">CRO: {editingPatient.cro}</p>
             </div>
 
             <form onSubmit={handleUpdate} className="space-y-4">
