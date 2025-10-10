@@ -1,3 +1,0 @@
-module.exports=[70911,a=>{"use strict";a.s(["default",()=>e]);var b=a.i(87924),c=a.i(72131),d=a.i(50944);function e(){let a=(0,d.useRouter)();return(0,c.useEffect)(()=>{a.replace("/superadmin/dashboard")},[a]),(0,b.jsx)("div",{className:"p-6 flex items-center justify-center",children:(0,b.jsx)("div",{className:"text-lg text-gray-600",children:"Redirecting to Super Admin Dashboard..."})})}}];
-
-//# sourceMappingURL=src_app_superadmin_page_tsx_733c6699._.js.map

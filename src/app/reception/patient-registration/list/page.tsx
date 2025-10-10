@@ -192,7 +192,7 @@ export default function PatientList() {
                 />
               </div>
               <button
-                onClick={fetchPatients}
+                onClick={() => fetchPatients()}
                 disabled={loading}
                 title="Refresh patient list"
                 className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 shadow-md"
