@@ -170,7 +170,7 @@ export default function AdminPatientEdit() {
     >
       <div className="space-y-6">
         <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-          <DateRangeFilter onDateRangeChange={setCurrentDateRange} />
+          <DateRangeFilter onDateChange={(fromDate, toDate) => setCurrentDateRange({ from_date: fromDate, to_date: toDate })} />
           
           <div className="flex items-center justify-between mt-6 mb-6">
             <h3 className="text-lg font-medium text-gray-900 mb-2">Search Patient to Edit</h3>

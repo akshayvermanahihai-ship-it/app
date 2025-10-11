@@ -166,7 +166,7 @@ export default function PatientList() {
       </div>
 
       <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-        <DateRangeFilter onDateRangeChange={setCurrentDateRange} />
+        <DateRangeFilter onDateChange={(fromDate, toDate) => setCurrentDateRange({ from_date: fromDate, to_date: toDate })} />
         
         <div className="flex items-center justify-between mt-4">
           <div className="flex items-center space-x-2 flex-1">

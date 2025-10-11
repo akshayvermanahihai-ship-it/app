@@ -351,7 +351,7 @@ export default function PatientReprint() {
       <div className="space-y-6">
         {/* Date Range Filter */}
         <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-          <DateRangeFilter onDateRangeChange={setCurrentDateRange} />
+          <DateRangeFilter onDateChange={(fromDate, toDate) => setCurrentDateRange({ from_date: fromDate, to_date: toDate })} />
         </div>
 
         {/* Search Section */}

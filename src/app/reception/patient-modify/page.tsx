@@ -308,8 +308,6 @@ export default function PatientModify() {
             )}
           </>
         )}
-          </div>
-        )}
       </div>
 
       {/* Edit Modal */}

@@ -55,6 +55,30 @@
         "x-next-revalidate-tag-token"
       ]
     },
+    "/login": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/login",
+      "dataRoute": "/login.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
     "/dashboard": {
       "experimentalBypassFor": [
         {
@@ -103,7 +127,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/login": {
+    "/admin/appointment-report": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -116,8 +140,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/login",
-      "dataRoute": "/login.rsc",
+      "srcRoute": "/admin/appointment-report",
+      "dataRoute": "/admin/appointment-report.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -151,30 +175,6 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/admin/appointment-report": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/admin/appointment-report",
-      "dataRoute": "/admin/appointment-report.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
     "/admin/category": {
       "experimentalBypassFor": [
         {
@@ -199,7 +199,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/admin/console-report": {
+    "/admin/dashboard": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -212,8 +212,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/admin/console-report",
-      "dataRoute": "/admin/console-report.rsc",
+      "srcRoute": "/admin/dashboard",
+      "dataRoute": "/admin/dashboard.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -247,7 +247,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/admin/hospital": {
+    "/admin/console-report": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -260,8 +260,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/admin/hospital",
-      "dataRoute": "/admin/hospital.rsc",
+      "srcRoute": "/admin/console-report",
+      "dataRoute": "/admin/console-report.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -319,6 +319,30 @@
         "x-next-revalidate-tag-token"
       ]
     },
+    "/admin/hospital": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/admin/hospital",
+      "dataRoute": "/admin/hospital.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
     "/admin/patient-new": {
       "experimentalBypassFor": [
         {
@@ -334,342 +358,6 @@
       "initialRevalidateSeconds": false,
       "srcRoute": "/admin/patient-new",
       "dataRoute": "/admin/patient-new.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/console/daily-report": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/console/daily-report",
-      "dataRoute": "/console/daily-report.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/admin/scan-head": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/admin/scan-head",
-      "dataRoute": "/admin/scan-head.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/console/detail-report": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/console/detail-report",
-      "dataRoute": "/console/detail-report.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/console": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/console",
-      "dataRoute": "/console.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/admin/dashboard": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/admin/dashboard",
-      "dataRoute": "/admin/dashboard.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/doctor/ct-scan-doctors": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/doctor/ct-scan-doctors",
-      "dataRoute": "/doctor/ct-scan-doctors.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/console/update": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/console/update",
-      "dataRoute": "/console/update.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/doctor/view-report": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/doctor/view-report",
-      "dataRoute": "/doctor/view-report.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/console/queue-after": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/console/queue-after",
-      "dataRoute": "/console/queue-after.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/doctor/dashboard": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/doctor/dashboard",
-      "dataRoute": "/doctor/dashboard.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/console/dashboard": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/console/dashboard",
-      "dataRoute": "/console/dashboard.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/doctor/ct-scan-doctor-list": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/doctor/ct-scan-doctor-list",
-      "dataRoute": "/doctor/ct-scan-doctor-list.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/inventory/analysis": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/inventory/analysis",
-      "dataRoute": "/inventory/analysis.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/doctor/report-pending-list": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/doctor/report-pending-list",
-      "dataRoute": "/doctor/report-pending-list.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -703,7 +391,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/inventory/transactions": {
+    "/console/daily-report": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -716,8 +404,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/inventory/transactions",
-      "dataRoute": "/inventory/transactions.rsc",
+      "srcRoute": "/console/daily-report",
+      "dataRoute": "/console/daily-report.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -727,7 +415,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/inventory/add": {
+    "/console/queue-after": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -740,8 +428,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/inventory/add",
-      "dataRoute": "/inventory/add.rsc",
+      "srcRoute": "/console/queue-after",
+      "dataRoute": "/console/queue-after.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -751,7 +439,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/inventory/report": {
+    "/console": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -764,8 +452,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/inventory/report",
-      "dataRoute": "/inventory/report.rsc",
+      "srcRoute": "/console",
+      "dataRoute": "/console.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -775,7 +463,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/inventory/dashboard": {
+    "/console/detail-report": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -788,8 +476,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/inventory/dashboard",
-      "dataRoute": "/inventory/dashboard.rsc",
+      "srcRoute": "/console/detail-report",
+      "dataRoute": "/console/detail-report.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -799,7 +487,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/inventory/outward": {
+    "/console/update": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -812,8 +500,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/inventory/outward",
-      "dataRoute": "/inventory/outward.rsc",
+      "srcRoute": "/console/update",
+      "dataRoute": "/console/update.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -823,7 +511,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/inventory/stock": {
+    "/doctor/ct-scan-doctors": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -836,8 +524,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/inventory/stock",
-      "dataRoute": "/inventory/stock.rsc",
+      "srcRoute": "/doctor/ct-scan-doctors",
+      "dataRoute": "/doctor/ct-scan-doctors.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -847,7 +535,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/reception/doctors": {
+    "/doctor/dashboard": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -860,8 +548,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/reception/doctors",
-      "dataRoute": "/reception/doctors.rsc",
+      "srcRoute": "/doctor/dashboard",
+      "dataRoute": "/doctor/dashboard.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -871,7 +559,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/reception/hospitals": {
+    "/doctor/ct-scan-doctor-list": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -884,8 +572,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/reception/hospitals",
-      "dataRoute": "/reception/hospitals.rsc",
+      "srcRoute": "/doctor/ct-scan-doctor-list",
+      "dataRoute": "/doctor/ct-scan-doctor-list.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -895,7 +583,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/reception/patient-category": {
+    "/doctor/report-pending-list": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -908,8 +596,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/reception/patient-category",
-      "dataRoute": "/reception/patient-category.rsc",
+      "srcRoute": "/doctor/report-pending-list",
+      "dataRoute": "/doctor/report-pending-list.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -919,7 +607,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/reception/doctor-report/daily": {
+    "/console/dashboard": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -932,8 +620,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/reception/doctor-report/daily",
-      "dataRoute": "/reception/doctor-report/daily.rsc",
+      "srcRoute": "/console/dashboard",
+      "dataRoute": "/console/dashboard.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -943,7 +631,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/reception/patient-registration/edit": {
+    "/inventory/analysis": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -956,8 +644,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/reception/patient-registration/edit",
-      "dataRoute": "/reception/patient-registration/edit.rsc",
+      "srcRoute": "/inventory/analysis",
+      "dataRoute": "/inventory/analysis.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -967,7 +655,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/reception/patient-modify": {
+    "/doctor/view-report": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -980,272 +668,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/reception/patient-modify",
-      "dataRoute": "/reception/patient-modify.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/reception/patient-registration/back-entry": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/reception/patient-registration/back-entry",
-      "dataRoute": "/reception/patient-registration/back-entry.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/reception/patient-registration/list": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/reception/patient-registration/list",
-      "dataRoute": "/reception/patient-registration/list.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/reception/patient-registration": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/reception/patient-registration",
-      "dataRoute": "/reception/patient-registration.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/reception/patient-registration/new": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/reception/patient-registration/new",
-      "dataRoute": "/reception/patient-registration/new.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/reception/patient-reprint-old": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/reception/patient-reprint-old",
-      "dataRoute": "/reception/patient-reprint-old.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/reception/pending-patient": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/reception/pending-patient",
-      "dataRoute": "/reception/pending-patient.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/reception/reports/appointment": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/reception/reports/appointment",
-      "dataRoute": "/reception/reports/appointment.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/reception/reports/daily": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/reception/reports/daily",
-      "dataRoute": "/reception/reports/daily.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/reception/scans": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/reception/scans",
-      "dataRoute": "/reception/scans.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/reception/voucher/list": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/reception/voucher/list",
-      "dataRoute": "/reception/voucher/list.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/reception/reports/revenue": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/reception/reports/revenue",
-      "dataRoute": "/reception/reports/revenue.rsc",
+      "srcRoute": "/doctor/view-report",
+      "dataRoute": "/doctor/view-report.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -1279,6 +703,534 @@
         "x-next-revalidate-tag-token"
       ]
     },
+    "/inventory/add": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/inventory/add",
+      "dataRoute": "/inventory/add.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/inventory/outward": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/inventory/outward",
+      "dataRoute": "/inventory/outward.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/inventory/report": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/inventory/report",
+      "dataRoute": "/inventory/report.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/inventory/transactions": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/inventory/transactions",
+      "dataRoute": "/inventory/transactions.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/reception/doctor-report/daily": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/reception/doctor-report/daily",
+      "dataRoute": "/reception/doctor-report/daily.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/inventory/stock": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/inventory/stock",
+      "dataRoute": "/inventory/stock.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/reception/patient-registration/edit": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/reception/patient-registration/edit",
+      "dataRoute": "/reception/patient-registration/edit.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/reception/doctors": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/reception/doctors",
+      "dataRoute": "/reception/doctors.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/reception/patient-registration/list": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/reception/patient-registration/list",
+      "dataRoute": "/reception/patient-registration/list.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/reception/patient-category": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/reception/patient-category",
+      "dataRoute": "/reception/patient-category.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/reception/patient-registration": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/reception/patient-registration",
+      "dataRoute": "/reception/patient-registration.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/reception/hospitals": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/reception/hospitals",
+      "dataRoute": "/reception/hospitals.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/reception/patient-modify": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/reception/patient-modify",
+      "dataRoute": "/reception/patient-modify.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/reception/patient-registration/new": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/reception/patient-registration/new",
+      "dataRoute": "/reception/patient-registration/new.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/reception/pending-patient": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/reception/pending-patient",
+      "dataRoute": "/reception/pending-patient.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/reception/patient-registration/back-entry": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/reception/patient-registration/back-entry",
+      "dataRoute": "/reception/patient-registration/back-entry.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/reception/reports/appointment": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/reception/reports/appointment",
+      "dataRoute": "/reception/reports/appointment.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/reception/patient-reprint-old": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/reception/patient-reprint-old",
+      "dataRoute": "/reception/patient-reprint-old.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/reception/reports/revenue": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/reception/reports/revenue",
+      "dataRoute": "/reception/reports/revenue.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/reception/scans": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/reception/scans",
+      "dataRoute": "/reception/scans.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/reception/reports/daily": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/reception/reports/daily",
+      "dataRoute": "/reception/reports/daily.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/reception/voucher/list": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/reception/voucher/list",
+      "dataRoute": "/reception/voucher/list.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
     "/reception/voucher": {
       "experimentalBypassFor": [
         {
@@ -1294,54 +1246,6 @@
       "initialRevalidateSeconds": false,
       "srcRoute": "/reception/voucher",
       "dataRoute": "/reception/voucher.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/reception/dashboard": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/reception/dashboard",
-      "dataRoute": "/reception/dashboard.rsc",
-      "allowHeader": [
-        "host",
-        "x-matched-path",
-        "x-prerender-revalidate",
-        "x-prerender-revalidate-if-generated",
-        "x-next-revalidated-tags",
-        "x-next-revalidate-tag-token"
-      ]
-    },
-    "/superadmin/dashboard": {
-      "experimentalBypassFor": [
-        {
-          "type": "header",
-          "key": "next-action"
-        },
-        {
-          "type": "header",
-          "key": "content-type",
-          "value": "multipart/form-data;.*"
-        }
-      ],
-      "initialRevalidateSeconds": false,
-      "srcRoute": "/superadmin/dashboard",
-      "dataRoute": "/superadmin/dashboard.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -1375,7 +1279,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/superadmin/doctor-scan-report": {
+    "/superadmin/all-reports-download": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -1388,8 +1292,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/superadmin/doctor-scan-report",
-      "dataRoute": "/superadmin/doctor-scan-report.rsc",
+      "srcRoute": "/superadmin/all-reports-download",
+      "dataRoute": "/superadmin/all-reports-download.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -1423,6 +1327,78 @@
         "x-next-revalidate-tag-token"
       ]
     },
+    "/superadmin/dashboard": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/superadmin/dashboard",
+      "dataRoute": "/superadmin/dashboard.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/inventory/dashboard": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/inventory/dashboard",
+      "dataRoute": "/inventory/dashboard.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/superadmin/doctor-scan-report": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/superadmin/doctor-scan-report",
+      "dataRoute": "/superadmin/doctor-scan-report.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
     "/superadmin/patient-report": {
       "experimentalBypassFor": [
         {
@@ -1447,7 +1423,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/superadmin/report-pending-list": {
+    "/reception/dashboard": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -1460,8 +1436,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/superadmin/report-pending-list",
-      "dataRoute": "/superadmin/report-pending-list.rsc",
+      "srcRoute": "/reception/dashboard",
+      "dataRoute": "/reception/dashboard.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -1471,7 +1447,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/superadmin/view-report": {
+    "/superadmin": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -1484,8 +1460,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/superadmin/view-report",
-      "dataRoute": "/superadmin/view-report.rsc",
+      "srcRoute": "/superadmin",
+      "dataRoute": "/superadmin.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -1519,7 +1495,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/superadmin/all-reports-download": {
+    "/superadmin/view-report": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -1532,8 +1508,32 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/superadmin/all-reports-download",
-      "dataRoute": "/superadmin/all-reports-download.rsc",
+      "srcRoute": "/superadmin/view-report",
+      "dataRoute": "/superadmin/view-report.rsc",
+      "allowHeader": [
+        "host",
+        "x-matched-path",
+        "x-prerender-revalidate",
+        "x-prerender-revalidate-if-generated",
+        "x-next-revalidated-tags",
+        "x-next-revalidate-tag-token"
+      ]
+    },
+    "/admin/scan-head": {
+      "experimentalBypassFor": [
+        {
+          "type": "header",
+          "key": "next-action"
+        },
+        {
+          "type": "header",
+          "key": "content-type",
+          "value": "multipart/form-data;.*"
+        }
+      ],
+      "initialRevalidateSeconds": false,
+      "srcRoute": "/admin/scan-head",
+      "dataRoute": "/admin/scan-head.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
@@ -1567,7 +1567,7 @@
         "x-next-revalidate-tag-token"
       ]
     },
-    "/superadmin": {
+    "/superadmin/report-pending-list": {
       "experimentalBypassFor": [
         {
           "type": "header",
@@ -1580,8 +1580,8 @@
         }
       ],
       "initialRevalidateSeconds": false,
-      "srcRoute": "/superadmin",
-      "dataRoute": "/superadmin.rsc",
+      "srcRoute": "/superadmin/report-pending-list",
+      "dataRoute": "/superadmin/report-pending-list.rsc",
       "allowHeader": [
         "host",
         "x-matched-path",
