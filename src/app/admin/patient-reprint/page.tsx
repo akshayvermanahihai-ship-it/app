@@ -142,7 +142,6 @@ export default function PatientReprint() {
   const handlePrint = () => {
     if (!patientData) return;
     
-    // Use the exact same receipt format as reception patient reprint old
     const receiptData = {
       cro: patientData.cro,
       patient_id: patientData.patient_id,
@@ -162,7 +161,6 @@ export default function PatientReprint() {
       total_scan_amount: patientData.total_amount || patientData.amount || 0
     };
     
-    // Generate receipt HTML using the exact same format as reception reprint old
     const receiptHTML = `
       <!DOCTYPE html>
       <html>
@@ -246,7 +244,7 @@ export default function PatientReprint() {
             <tr>
               <td colspan="6" align="right">For Varaha SDC, Jodhpur</span></td>
             </tr>
-                    <tr>
+            <tr>
               <td></td>
             </tr>
           </table>
@@ -254,7 +252,7 @@ export default function PatientReprint() {
         
         <hr>
         
-        <div div class="admission_form" align="center" style="border:solid thin; margin-top:18px;width:93.0%;margin-left:30px;">
+        <div class="admission_form" align="center" style="border:solid thin; margin-top:18px;width:93.0%;margin-left:30px;">
           <table align="center" style="margin-top:2px;">
             <tr><td colspan="6"><b>Dr. S.N. MEDICAL COLLEGE AND ATTACHED GROUP OF HOSPITAL, JODHPUR</b></td></tr>
             <tr><td colspan="6"><b>Rajasthan Medical Relief Society, M.D.M. Hospital, Jodhpur</b></td></tr>
@@ -323,7 +321,7 @@ export default function PatientReprint() {
             <tr>
               <td colspan="6" align="right">For Varaha SDC, Jodhpur</span></td>
             </tr>
-               <tr>
+            <tr>
               <td></td>
             </tr>
           </table>
@@ -332,7 +330,6 @@ export default function PatientReprint() {
       </html>
     `;
     
-    // Open receipt in new window and print
     const printWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
     if (printWindow) {
       printWindow.document.write(receiptHTML);

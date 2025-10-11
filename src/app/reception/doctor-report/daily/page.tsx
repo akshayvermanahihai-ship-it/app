@@ -61,10 +61,7 @@ export default function DoctorDailyReport() {
     generateReport();
   };
 
-  useEffect(() => {
-    // Auto-load today's report on page load
-    generateReport();
-  }, []);
+  // Removed auto-load - users must click Generate Report button
 
   const exportToExcel = () => {
     if (!startDate || !endDate) {

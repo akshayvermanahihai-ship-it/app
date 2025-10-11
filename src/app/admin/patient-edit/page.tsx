@@ -115,7 +115,7 @@ export default function AdminPatientEdit() {
         buttonText = 'Pending';
         break;
       default:
-        buttonText = 'Unknown Status';
+        buttonText = 'Recall';
     }
 
     if (status === 2) {
