@@ -3,7 +3,7 @@
 export default function AdminPatientNew() {
   // Redirect to reception patient registration
   if (typeof window !== 'undefined') {
-    window.location.href = '/reception/patient-registration/new';
+    window.location.href = '/admin/patient-registration/new';
   }
   
   return (
