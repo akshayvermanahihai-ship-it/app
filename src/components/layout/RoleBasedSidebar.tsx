@@ -127,7 +127,7 @@ export default function RoleBasedSidebar({ userRole, onClose }: SidebarProps) {
         },
         { 
           id: 'doctor-report-section', 
-          label: 'Doctor Report Section', 
+          label: 'Doctor Report', 
           icon: Stethoscope, 
           submenu: [
             { label: 'Daily Reports', href: '/reception/doctor-report/daily', icon: Calendar }

@@ -63,16 +63,7 @@ export default function DoctorDailyReport() {
 
   // Removed auto-load - users must click Generate Report button
 
-  const exportToExcel = () => {
-    if (!startDate || !endDate) {
-      toast.error('Please generate report first');
-      return;
-    }
 
-    // Use server-side Excel generation (matches PHP exactly)
-    const url = `https://varahasdc.co.in/api/reception/reports/doctor/excel?startDate=${startDate}&endDate=${endDate}`;
-    window.open(url, '_blank');
-  };
 
   const exportToExcelClient = () => {
     if (reportData.length === 0) {
@@ -194,13 +185,6 @@ export default function DoctorDailyReport() {
                 </div>
                 <div className="flex space-x-2">
                   <button
-                    onClick={exportToExcel}
-                    className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:from-green-600 hover:to-emerald-700 transition-all duration-200 shadow-md font-medium"
-                  >
-                    <Download className="h-4 w-4" />
-                    <span>Export to Excel</span>
-                  </button>
-                  <button
                     onClick={exportToExcelClient}
                     className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 shadow-md font-medium"
                   >
@@ -213,36 +197,44 @@ export default function DoctorDailyReport() {
 
             {/* Report Table */}
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full table-fixed">
+                <colgroup>
+                  <col className="w-16" />
+                  <col className="w-48" />
+                  <col className="w-24" />
+                  <col className="w-24" />
+                  <col className="w-24" />
+                  <col className="w-32" />
+                </colgroup>
                 <thead className="bg-blue-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">S.No</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider">Doctor Name</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-blue-700 uppercase tracking-wider">Total Scan</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-blue-700 uppercase tracking-wider">Paid Patient</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-blue-700 uppercase tracking-wider">Free Patient</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-blue-700 uppercase tracking-wider">Total Revenue</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-blue-700 uppercase">S.No</th>
+                    <th className="px-3 py-2 text-left text-xs font-medium text-blue-700 uppercase">Doctor Name</th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-blue-700 uppercase">Total Scan</th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-blue-700 uppercase">Paid Patient</th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-blue-700 uppercase">Free Patient</th>
+                    <th className="px-3 py-2 text-right text-xs font-medium text-blue-700 uppercase">Total Revenue</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {reportData.map((row, index) => (
                     <tr key={index} className="hover:bg-blue-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{row.sno}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{row.doctorName}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">{row.totalScans}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">{row.paidPatients}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">{row.freePatients}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">₹{row.totalRevenue.toLocaleString()}</td>
+                      <td className="px-3 py-2 text-sm font-medium text-gray-900">{row.sno}</td>
+                      <td className="px-3 py-2 text-sm text-gray-900 font-medium truncate">{row.doctorName}</td>
+                      <td className="px-3 py-2 text-sm text-gray-900 text-center">{row.totalScans}</td>
+                      <td className="px-3 py-2 text-sm text-gray-900 text-center">{row.paidPatients}</td>
+                      <td className="px-3 py-2 text-sm text-gray-900 text-center">{row.freePatients}</td>
+                      <td className="px-3 py-2 text-sm text-gray-900 text-right font-medium">₹{row.totalRevenue.toLocaleString()}</td>
                     </tr>
                   ))}
                   
                   {/* Total Row */}
                   <tr className="bg-blue-100 font-bold">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-900" colSpan={2}>TOTAL</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-900 text-center">{getTotalScans()}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-900 text-center">{getTotalPaid()}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-900 text-center">{getTotalFree()}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-900 text-right">₹{getTotalRevenue().toLocaleString()}</td>
+                    <td className="px-3 py-2 text-sm text-blue-900" colSpan={2}>TOTAL</td>
+                    <td className="px-3 py-2 text-sm text-blue-900 text-center">{getTotalScans()}</td>
+                    <td className="px-3 py-2 text-sm text-blue-900 text-center">{getTotalPaid()}</td>
+                    <td className="px-3 py-2 text-sm text-blue-900 text-center">{getTotalFree()}</td>
+                    <td className="px-3 py-2 text-sm text-blue-900 text-right">₹{getTotalRevenue().toLocaleString()}</td>
                   </tr>
                 </tbody>
               </table>
