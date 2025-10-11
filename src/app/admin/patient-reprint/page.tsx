@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Search, Printer, FileText, User, RefreshCw } from 'lucide-react';
 import SuperAdminLayout from '@/components/SuperAdminLayout';
 import DateRangeFilter from '@/components/ui/DateRangeFilter';
+import { formatDate, getCurrentDate } from '@/utils/dateFormat';
 
 interface ScanDetail {
   name: string;
@@ -122,224 +123,220 @@ export default function PatientReprint() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedPatients = filteredPatients.slice(startIndex, startIndex + itemsPerPage);
 
+  // Convert number to words function
+  const numberToWords = (num: number): string => {
+    const ones = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
+    const teens = ['ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+    const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+    
+    if (num === 0) return 'zero';
+    if (num < 10) return ones[num];
+    if (num < 20) return teens[num - 10];
+    if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? ' ' + ones[num % 10] : '');
+    if (num < 1000) return ones[Math.floor(num / 100)] + ' hundred' + (num % 100 ? ' ' + numberToWords(num % 100) : '');
+    if (num < 100000) return numberToWords(Math.floor(num / 1000)) + ' thousand' + (num % 1000 ? ' ' + numberToWords(num % 1000) : '');
+    
+    return num.toString();
+  };
+
   const handlePrint = () => {
     if (!patientData) return;
     
-    // Create print content matching exact reception patient registration format
-    const currentDate = new Date().toLocaleDateString('en-GB');
-    const investigations = patientData.scan_details?.map(s => s.name).join(', ') || 'CT Scan';
+    // Use the exact same receipt format as reception patient reprint old
+    const receiptData = {
+      cro: patientData.cro,
+      patient_id: patientData.patient_id,
+      patient_name: patientData.patient_name,
+      age: patientData.age,
+      gender: patientData.gender,
+      address: patientData.address || '',
+      contact_number: patientData.contact_number || '',
+      category: patientData.category || '',
+      doctor_name: patientData.doctor_name,
+      date: patientData.date,
+      allot_date: patientData.allot_date,
+      time_slot: patientData.time_slot || '',
+      scan_names: patientData.scan_details?.map(s => s.name).join(', ') || '',
+      amount: patientData.amount || 0,
+      amount_reci: patientData.total_amount || patientData.amount || 0,
+      total_scan_amount: patientData.total_amount || patientData.amount || 0
+    };
     
-    const printContent = `
+    // Generate receipt HTML using the exact same format as reception reprint old
+    const receiptHTML = `
       <!DOCTYPE html>
       <html>
-        <head>
-          <title>Patient Receipt - ${patientData.cro}</title>
-          <style>
-            @media print {
-              .no_print, .no_print * { display: none !important; }
-              .admission_div_desc { border: 0px !important; }
-              .page_break { page-break-after: always; }
-            }
-            .admission_form {
-              text-align: center;
-              color: #000000;
-              font-size: 14px;
-              width: 100%;
-            }
-            .admission_form table {
-              width: 100%;
-              font-size: 10px;
-              margin: -5px 0px;
-            }
-            .admission_form .form_input_box {
-              border-bottom: 0px dotted #000000;
-              padding: 0px 0px 2px 0px;
-              width: 100%;
-              display: inline-block;
-            }
-            .admission_form .form_input {
-              padding: 2px 1%;
-              font-size: 16px;
-              border: none;
-              font-weight: bold;
-              font-style: italic;
-              width: 99%;
-              border-bottom: 1px dotted #000000;
-            }
-            body {
-              font-family: Arial, sans-serif;
-              margin: 0;
-              padding: 10px;
-              background: #FFFFFF;
-            }
-          </style>
-        </head>
-        <body bgcolor="#FFFFFF" leftmargin="0" topmargin="0" marginwidth="0" marginheight="0">
-          <div class="admission_form" align="center" style="border:solid thin; margin-top:20px;width:99.0%;margin-left:5px;margin-right:5px">
-            <table align="center" style="margin-top:2px;">
-              <tr><td align="center" colspan="6">Dr. S.N. MEDICL COLLEGE AND ATTACHED GROUP OF HOSPITAL, JODHPUR</td></tr>
-              <tr><td align="center" colspan="6">Rajasthan Medical Relief Society, M.D.M. Hospital, Jodhpur</td></tr>
-              <tr><td align="center" colspan="6">IMAGING CENTRE UNDER P.P.P.MODE : VARAHA SDC</td></tr>
-              <tr><td align="center" colspan="6">256 SLICE DUAL ENERGY CT SCAN, M.D.M HOSPITAL Jodhpur(Raj.) - 342003</td></tr>
-              <tr><td align="center" colspan="6">Tel. : +91-291-2621517, Fax : +91-291-2621317</td></tr>
-              <tr><td align="center" colspan="6">Cash Receipt</td></tr>
-            </table>
-            
-            <table>
-              <tr>
-                <td width="80"><label>Reg.No :</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="reg" value="${patientData.cro}"></span></td>
-                <td width="30"><label>Date</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="date" value="${currentDate}"></span></td>
-              </tr>
-            </table>
-            
-            <table>
-              <tr>
-                <td width="80"><label>Deptt. :</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="doctor" value="${patientData.doctor_name || ''}"></span></td>
-                <td width="220"><label>Date and Time of Appoinment :</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="date-time" value="${patientData.allot_date || patientData.date} ${patientData.time_slot || ''}"></span></td>
-              </tr>
-            </table>
-            
-            <table>
-              <tr>
-                <td width="130"><label>Name Of Patient :</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="name" value="${patientData.patient_name}"></span></td>
-                <td><label>Age :</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="age" value="${patientData.age}"></span></td>
-                <td><label>Gender</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="gender" value="${patientData.gender}"></span></td>
-              </tr>
-            </table>
-            
-            <table>
-              <tr>
-                <td width="80"><label>Address</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="address" value="${patientData.address || ''}"></span></td>
-                <td width="60"><label>Phone:</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="phone" value="${patientData.contact_number || ''}"></span></td>
-              </tr>
-            </table>
-            
-            <table>
-              <tr>
-                <td width="80"><label>Investiations:</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="investigations" value="${investigations}"></span></td>
-              </tr>
-            </table>
-            
-            <table>
-              <tr>
-                <td width="150"><label>For Sum Of Rupees:</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="sum" value="Rs. ${patientData.total_amount || patientData.amount}/-"></span></td>
-                <td width="150"><input type="text" name="amunt" value="Rs. ${patientData.total_amount || patientData.amount}" style="border:2px solid;"></td>
-              </tr>
-            </table>
-            
-            <table>
-              <tr>
-                <td align="right" colspan="6"><label>For Varaha SDC, Jodhpur</label></td>
-              </tr>
-            </table>
-            <br>
-          </div>
-          <hr>
+      <head>
+        <title>Receipt - ${receiptData.cro}</title>
+        <style>
+          .admission_form { text-align: center; color: #000000; font-size: 10px; width: 100%; }
+          .admission_form table { width: 98%; font-size: 10px; margin: -5px 8px; }
+          .admission_form .form_input { padding: 2px 1%; font-size: 10px; border: none; font-weight: bold; font-style: italic; width: 99%; border-bottom: 1px dotted #000000; }
+          .admission_form .form_input_box { border-bottom: 0px dotted #000000; padding: 0px 0px 2px 0px; width: 100%; display: inline-block; }
+          @media print { .no_print, .no_print * { display: none !important; } .admission_div_desc { border: 0px !important; } .page_break { page-break-after: always; } }
+        </style>
+      </head>
+      <body bgcolor="#FFFFFF" leftmargin="0" topmargin="0" marginwidth="0" marginheight="0" onload="window.print(); setTimeout(() => window.close(), 1000);">
+        <div class="admission_form" align="center" style="border:solid thin; margin-top:18px;width:93.0%;margin-left:30px;">
+          <table align="center" style="margin-top:2px;">
+            <tr><td colspan="6"><b>Dr. S.N. MEDICAL COLLEGE AND ATTACHED GROUP OF HOSPITAL, JODHPUR</b></td></tr>
+            <tr><td colspan="6"><b>Rajasthan Medical Relief Society, M.D.M. Hospital, Jodhpur</b></td></tr>
+            <tr><td colspan="6"><b>IMAGING CENTRE UNDER P.P.P.MODE : VARAHA SDC</b></td></tr>
+            <tr><td colspan="6"><b>256 SLICE DUAL ENERGY CT SCAN, M.D.M HOSPITAL Jodhpur(Raj.) - 342003</b></td></tr>
+            <tr><td colspan="6"><b>Tel. : +91-291-2648120 , 0291-2648121 , 0291-2648122</b></td></tr>
+          </table>
           
-          <!-- Duplicate Receipt -->
-          <div class="admission_form" align="center" style="border:solid thin; margin-top:18px; width:99.0%;margin-left:5px;margin-right:5px">
-            <table align="center" style="margin-top:2px;">
-              <tr><td align="center" colspan="6">Dr. S.N. MEDICL COLLEGE AND ATTACHED GROUP OF HOSPITAL, JODHPUR</td></tr>
-              <tr><td align="center" colspan="6">Rajasthan Medical Relief Society, M.D.M. Hospital, Jodhpur</td></tr>
-              <tr><td align="center" colspan="6">IMAGING CENTRE UNDER P.P.P.MODE : VARAHA SDC</td></tr>
-              <tr><td align="center" colspan="6">256 SLICE DUAL ENERGY CT SCAN, M.D.M HOSPITAL Jodhpur(Raj.) - 342003</td></tr>
-              <tr><td align="center" colspan="6">Tel. : +91-291-2621517, Fax : +91-291-2621317</td></tr>
-              <tr><td align="center" colspan="6">Cash Receipt</td></tr>
-            </table>
-            
-            <table>
-              <tr>
-                <td width="80"><label>Reg.No :</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="reg" value="${patientData.cro}"></span></td>
-                <td width="30"><label>Date</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="date" value="${currentDate}"></span></td>
-              </tr>
-            </table>
-            
-            <table>
-              <tr>
-                <td width="80"><label>Deptt. :</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="doctor" value="${patientData.doctor_name || ''}"></span></td>
-                <td width="220"><label>Date and Time of Appoinment :</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="date-time" value="${patientData.allot_date || patientData.date} ${patientData.time_slot || ''}"></span></td>
-              </tr>
-            </table>
-            
-            <table>
-              <tr>
-                <td width="130"><label>Name Of Patient :</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="name" value="${patientData.patient_name}"></span></td>
-                <td><label>Age :</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="age" value="${patientData.age}"></span></td>
-                <td><label>Gender</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="gender" value="${patientData.gender}"></span></td>
-              </tr>
-            </table>
-            
-            <table>
-              <tr>
-                <td width="80"><label>Address</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="address" value="${patientData.address || ''}"></span></td>
-                <td width="60"><label>Phone:</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="phone" value="${patientData.contact_number || ''}"></span></td>
-              </tr>
-            </table>
-            
-            <table>
-              <tr>
-                <td width="80"><label>Investiations:</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="investigations" value="${investigations}"></span></td>
-              </tr>
-            </table>
-            
-            <table>
-              <tr>
-                <td width="150"><label>For Sum Of Rupees:</label></td>
-                <td><span class="form_input_box"><input type="text" class="form_input" name="sum" value="Rs. ${patientData.total_amount || patientData.amount}/-"></span></td>
-                <td width="150"><input type="text" name="amunt" value="Rs. ${patientData.total_amount || patientData.amount}" style="border:2px solid;"></td>
-              </tr>
-            </table>
-            
-            <table>
-              <tr>
-                <td align="right" colspan="6"><label>For Varaha SDC, Jodhpur</label></td>
-              </tr>
-            </table>
-            <br>
-          </div>
-        </body>
+          <table>
+            <tr>
+              <td width="55">Reg.No :</td>
+              <td width="200"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.cro}(${receiptData.patient_id})"></span></td>
+              <td colspan="6"><span style="margin-left:30%; border: 1px solid #02C; border-radius: 11px;padding: 3px 15px;">Cash Receipt</span></td>
+              <td width="36">Date</td>
+              <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="${formatDate(receiptData.date || new Date())}"></span></td>
+            </tr>
+          </table>
+          
+          <table>
+            <tr>
+              <td width="56">Ref. By :</td>
+              <td width="482"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.doctor_name}"></span></td>
+              <td width="174">Date and Time of Appointment :</td>
+              <td width="316"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.allot_date}"></span></td>
+            </tr>
+          </table>
+          
+          <table>
+            <tr>
+              <td width="78">Patient Name:</td>
+              <td width="650"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.patient_name}"></span></td>
+              <td width="33">Age :</td>
+              <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.age}"></span></td>
+              <td width="36">Gender</td>
+              <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.gender}"></span></td>
+            </tr>
+          </table>
+          
+          <table>
+            <tr>
+              <td width="40">Address</td>
+              <td width="687"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.address}"></span></td>
+              <td width="120"><span class="form_input_box"><label>Category</label><input type="text" class="form_input" value="${receiptData.category}"></span></td>
+              <td width="33">Phone:</td>
+              <td width="333"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.contact_number}"></span></td>
+            </tr>
+          </table>
+          
+          <table>
+            <tr>
+              <td width="59">Investigations:</td>
+              <td width="1042"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.scan_names}"></span></td>
+            </tr>
+          </table>
+          
+          <table>
+            <tr>
+              <td width="100">For Sum Of Rupees:</td>
+              <td width="733"><span class="form_input_box"><input type="text" class="form_input" value="${numberToWords(receiptData.amount_reci).toUpperCase()} RUPEES ONLY"></span></td>
+              <td width="30"><label>Scan Amount</label><input type="text" value="₹ ${receiptData.total_scan_amount}" style="border:1px solid #5E60AE;"></td>
+              <td width="30"><label>Received Amount</label><input type="text" value="₹ ${receiptData.amount_reci}" style="border:1px solid #5E60AE;"></td>
+            </tr>
+          </table>
+          
+          <table>
+            <tr>
+              <td colspan="6" align="right">For Varaha SDC, Jodhpur</span></td>
+            </tr>
+                    <tr>
+              <td></td>
+            </tr>
+          </table>
+        </div>
+        
+        <hr>
+        
+        <div div class="admission_form" align="center" style="border:solid thin; margin-top:18px;width:93.0%;margin-left:30px;">
+          <table align="center" style="margin-top:2px;">
+            <tr><td colspan="6"><b>Dr. S.N. MEDICAL COLLEGE AND ATTACHED GROUP OF HOSPITAL, JODHPUR</b></td></tr>
+            <tr><td colspan="6"><b>Rajasthan Medical Relief Society, M.D.M. Hospital, Jodhpur</b></td></tr>
+            <tr><td colspan="6"><b>IMAGING CENTRE UNDER P.P.P.MODE : VARAHA SDC</b></td></tr>
+            <tr><td colspan="6"><b>256 SLICE DUAL ENERGY CT SCAN, M.D.M HOSPITAL Jodhpur(Raj.) - 342003</b></td></tr>
+            <tr><td colspan="6"><b>Tel. : +91-291-2648120 , 0291-2648121 , 0291-2648122</b></td></tr>
+          </table>
+          
+          <table>
+            <tr>
+              <td width="55">Reg.No :</td>
+              <td width="200"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.cro}(${receiptData.patient_id})"></span></td>
+              <td colspan="6"><span style="margin-left:30%; border: 1px solid #02C; border-radius: 11px;padding: 3px 15px;">Cash Receipt</span></td>
+              <td width="36">Date</td>
+              <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="${formatDate(receiptData.date || new Date())}"></span></td>
+            </tr>
+          </table>
+          
+          <table>
+            <tr>
+              <td width="56">Ref. By :</td>
+              <td width="482"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.doctor_name}"></span></td>
+              <td width="174">Date and Time of Appointment :</td>
+              <td width="316"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.allot_date}"></span></td>
+            </tr>
+          </table>
+          
+          <table>
+            <tr>
+              <td width="78">Patient Name:</td>
+              <td width="650"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.patient_name}"></span></td>
+              <td width="33">Age :</td>
+              <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.age}"></span></td>
+              <td width="36">Gender</td>
+              <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.gender}"></span></td>
+            </tr>
+          </table>
+          
+          <table>
+            <tr>
+              <td width="40">Address</td>
+              <td width="687"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.address}"></span></td>
+              <td width="120"><span class="form_input_box"><label>Category</label><input type="text" class="form_input" value="${receiptData.category}"></span></td>
+              <td width="33">Phone:</td>
+              <td width="333"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.contact_number}"></span></td>
+            </tr>
+          </table>
+          
+          <table>
+            <tr>
+              <td width="59">Investigations:</td>
+              <td width="1042"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.scan_names}"></span></td>
+            </tr>
+          </table>
+          
+          <table>
+            <tr>
+              <td width="20">For Sum Of Rupees:</td>
+              <td width="550"><span class="form_input_box"><input type="text" class="form_input" value="${numberToWords(receiptData.amount_reci).toUpperCase()} RUPEES ONLY"></span></td>
+              <td width="30"><label>Scan Amount</label><input type="text" value="₹ ${receiptData.total_scan_amount}" style="border:1px solid #5E60AE;"></td>
+              <td width="30"><label>Received Amount</label><input type="text" value="₹ ${receiptData.amount_reci}" style="border:1px solid #5E60AE;"></td>
+            </tr>
+          </table>
+          
+          <table>
+            <tr>
+              <td colspan="6" align="right">For Varaha SDC, Jodhpur</span></td>
+            </tr>
+               <tr>
+              <td></td>
+            </tr>
+          </table>
+        </div>
+      </body>
       </html>
     `;
     
-    // Open print window
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    // Open receipt in new window and print
+    const printWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
     if (printWindow) {
-      printWindow.document.write(printContent);
+      printWindow.document.write(receiptHTML);
       printWindow.document.close();
-      
-      // Force immediate print trigger
-      setTimeout(() => {
-        printWindow.focus();
-        try {
-          printWindow.print();
-        } catch (error) {
-          console.error('Print failed:', error);
-          setTimeout(() => {
-            printWindow.print();
-          }, 500);
-        }
-      }, 100);
     }
   };
 
@@ -507,6 +504,7 @@ export default function PatientReprint() {
                   <div className="col-span-2"><span className="font-medium">Address:</span> {patientData.address}</div>
                   <div><span className="font-medium">Category:</span> {patientData.category}</div>
                   <div><span className="font-medium">Amount:</span> ₹{patientData.amount}</div>
+                  <div><span className="font-medium">Date:</span> {formatDate(patientData.date)}</div>
                 </div>
               </div>
               
