@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { User, Calendar, FileText, Plus, ArrowLeft, ArrowRight, Check, ChevronDown } from 'lucide-react';
 import { useToastContext } from '@/context/ToastContext';
 import LastEnrolledPatient from '@/components/LastEnrolledPatient';
+import { getCurrentDate } from '@/utils/dateFormat';
 
 interface FormData {
   // Step 1 - Enrollment Details
@@ -80,7 +81,7 @@ export default function NewPatientRegistration() {
   const [savedPatientData, setSavedPatientData] = useState<any>(null);
   
   const [formData, setFormData] = useState<FormData>({
-    date: new Date().toLocaleDateString('en-GB').split('/').reverse().join('-'),
+    date: getCurrentDate(),
     hospital_name: '',
     doctor_name: '',
     pre: 'Mr.',
@@ -95,7 +96,7 @@ export default function NewPatientRegistration() {
     city: '',
     contact_number: '',
     type_of_scan: [],
-    appoint_date: new Date().toLocaleDateString('en-GB').split('/').reverse().join('-'),
+    appoint_date: getCurrentDate(),
     time: '',
     time_in: '',
     amount: '0',
@@ -301,7 +302,7 @@ export default function NewPatientRegistration() {
       
       // Populate form with patient data
       setFormData({
-        date: patient.date || new Date().toLocaleDateString('en-GB').split('/').reverse().join('-'),
+        date: patient.date || getCurrentDate(),
         hospital_name: patient.hospital_id?.toString() || '',
         doctor_name: patient.doctor_name?.toString() || '',
         pre: patient.pre || 'Mr.',
@@ -316,7 +317,7 @@ export default function NewPatientRegistration() {
         city: patient.city || '',
         contact_number: patient.contact_number || '',
         type_of_scan: scanIds,
-        appoint_date: patient.appoint_date ? (patient.appoint_date.includes('-') ? patient.appoint_date : patient.appoint_date) : new Date().toLocaleDateString('en-GB').split('/').reverse().join('-'),
+        appoint_date: patient.appoint_date ? (patient.appoint_date.includes('-') ? patient.appoint_date : patient.appoint_date) : getCurrentDate(),
         time: patient.time || '',
         time_in: patient.time_in || '',
         amount: patient.amount?.toString() || '0',
@@ -858,8 +859,9 @@ export default function NewPatientRegistration() {
   };
 
   const resetForm = () => {
+    const today = getCurrentDate();
     setFormData({
-      date: new Date().toLocaleDateString('en-GB').split('/').reverse().join('-'),
+      date: today,
       hospital_name: '',
       doctor_name: '',
       pre: 'Mr.',
@@ -874,7 +876,7 @@ export default function NewPatientRegistration() {
       city: '',
       contact_number: '',
       type_of_scan: [],
-      appoint_date: new Date().toLocaleDateString('en-GB').split('/').reverse().join('-'),
+      appoint_date: today,
       time: '',
       time_in: '',
       amount: '0',
@@ -917,9 +919,11 @@ export default function NewPatientRegistration() {
   };
 
   const printReceipt = (patientData: any) => {
-    const currentDate = new Date().toLocaleDateString('en-GB');
+    const currentDate = getCurrentDate();
+    const appointmentDate = formData.appoint_date;
     const investigations = selectedScans.map(scan => scan.s_name).join(', ');
     const amountInWords = numberToWords(parseInt(formData.rec_amount || formData.total_amount)).toUpperCase();
+    const ageWithUnit = `${formData.age} ${formData.age_type}`;
     
     const printContent = `
 <!DOCTYPE html>

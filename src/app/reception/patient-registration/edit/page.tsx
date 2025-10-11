@@ -5,6 +5,7 @@ import { Search, Edit, Eye, FileText, Send, User, Calendar, Phone, MapPin, X } f
 import { useToastContext } from '@/context/ToastContext';
 import LastEnrolledPatient from '@/components/LastEnrolledPatient';
 import DateRangeFilter from '@/components/ui/DateRangeFilter';
+import { formatDate } from '@/utils/dateFormat';
 
 interface Patient {
   patient_id: number;

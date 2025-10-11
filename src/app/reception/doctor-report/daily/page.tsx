@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, FileText, Download, Search } from 'lucide-react';
 import { useToastContext } from '@/context/ToastContext';
 import LastEnrolledPatient from '@/components/LastEnrolledPatient';
+import { getCurrentDate, formatDate } from '@/utils/dateFormat';
 
 interface ReportData {
   sno: number;
@@ -17,11 +18,7 @@ interface ReportData {
 export default function DoctorDailyReport() {
   const toast = useToastContext();
   const getTodayDate = () => {
-    const today = new Date();
-    const dd = String(today.getDate()).padStart(2, '0');
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const yyyy = today.getFullYear();
-    return `${dd}-${mm}-${yyyy}`;
+    return getCurrentDate();
   };
 
   const [startDate, setStartDate] = useState(getTodayDate());

@@ -73,7 +73,7 @@ export default function RoleBasedSidebar({ userRole, onClose }: SidebarProps) {
           ]
         },
         { 
-          id: 'add', 
+          id: 'patient', 
           label: 'Add', 
           icon: UserPlus, 
           submenu: [
@@ -132,8 +132,8 @@ export default function RoleBasedSidebar({ userRole, onClose }: SidebarProps) {
           submenu: [
             { label: 'Daily Reports', href: '/reception/doctor-report/daily', icon: Calendar }
           ]
-        },
-        { id: 'patient-modify', label: 'Patient Modify', icon: Edit, href: '/reception/patient-modify' }
+        }//,
+       // { id: 'patient-modify', label: 'Patient Modify', icon: Edit, href: '/reception/patient-modify' }
       ]
     },
     doctor: {

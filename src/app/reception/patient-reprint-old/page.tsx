@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react';
 import { Search, Printer, FileText } from 'lucide-react';
 import { useToastContext } from '@/context/ToastContext';
 import LastEnrolledPatient from '@/components/LastEnrolledPatient';
+import { formatDate, getCurrentDate } from '@/utils/dateFormat';
 
 interface Patient {
   patient_id: number;
@@ -145,7 +146,7 @@ export default function PatientReprintOld() {
                 <td width="200"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.cro}(${receiptData.patient_id})"></span></td>
                 <td colspan="6"><span style="margin-left:30%; border: 1px solid #02C; border-radius: 11px;padding: 3px 15px;">Cash Receipt</span></td>
                 <td width="36">Date</td>
-                <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.date}"></span></td>
+                <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="${formatDate(receiptData.date || new Date())}"></span></td>
               </tr>
             </table>
             
@@ -222,7 +223,7 @@ export default function PatientReprintOld() {
                 <td width="200"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.cro}(${receiptData.patient_id})"></span></td>
                 <td colspan="6"><span style="margin-left:30%; border: 1px solid #02C; border-radius: 11px;padding: 3px 15px;">Cash Receipt</span></td>
                 <td width="36">Date</td>
-                <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="${receiptData.date}"></span></td>
+                <td width="144"><span class="form_input_box"><input type="text" class="form_input" value="${formatDate(receiptData.date || new Date())}"></span></td>
               </tr>
             </table>
             
