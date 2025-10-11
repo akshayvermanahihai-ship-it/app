@@ -157,7 +157,7 @@ export default function PatientReprint() {
       time_slot: patientData.time_slot || '',
       scan_names: patientData.scan_details?.map(s => s.name).join(', ') || '',
       amount: patientData.amount || 0,
-      amount_reci: patientData.total_amount || patientData.amount || 0,
+      amount_reci: patientData.category === 'GEN / Paid' ? (patientData.total_amount || patientData.amount || 0) : 0,
       total_scan_amount: patientData.total_amount || patientData.amount || 0
     };
     
