@@ -1516,7 +1516,7 @@ export default function NewPatientRegistration() {
                   <input
                     type="date"
                     name="appoint_date"
-                    value={formData.appoint_date}
+                    value={formData.appoint_date.includes('-') && formData.appoint_date.split('-')[0].length === 4 ? formData.appoint_date : formData.appoint_date.split('-').reverse().join('-')}
                     onChange={handleAppointmentDateChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />

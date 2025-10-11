@@ -63,7 +63,16 @@ export default function DoctorDailyReport() {
 
   // Removed auto-load - users must click Generate Report button
 
+  const exportToExcel = () => {
+    if (!startDate || !endDate) {
+      toast.error('Please generate report first');
+      return;
+    }
 
+    // Use server-side Excel generation (matches PHP exactly)
+    const url = `https://varahasdc.co.in/api/reception/reports/doctor/excel?startDate=${startDate}&endDate=${endDate}`;
+    window.open(url, '_blank');
+  };
 
   const exportToExcelClient = () => {
     if (reportData.length === 0) {
