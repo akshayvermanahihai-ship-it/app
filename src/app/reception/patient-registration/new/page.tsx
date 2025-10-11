@@ -316,7 +316,7 @@ export default function NewPatientRegistration() {
         city: patient.city || '',
         contact_number: patient.contact_number || '',
         type_of_scan: scanIds,
-        appoint_date: patient.appoint_date ? (patient.appoint_date.includes('-') ? patient.appoint_date.split('-').reverse().join('-') : patient.appoint_date) : new Date().toLocaleDateString('en-GB').split('/').reverse().join('-'),
+        appoint_date: patient.appoint_date ? (patient.appoint_date.includes('-') ? patient.appoint_date : patient.appoint_date) : new Date().toLocaleDateString('en-GB').split('/').reverse().join('-'),
         time: patient.time || '',
         time_in: patient.time_in || '',
         amount: patient.amount?.toString() || '0',
