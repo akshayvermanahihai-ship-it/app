@@ -783,7 +783,7 @@ export default function NewPatientRegistration() {
           toast.info('Receipt printed successfully!');
         }
         setTimeout(() => {
-          window.location.href = '/reception/patient-registration';
+          window.location.href = '/reception/patient-registration/list';
         }, 2000);
       }
       return;
@@ -1812,7 +1812,7 @@ export default function NewPatientRegistration() {
                         if (toast && typeof toast.info === 'function') {
                           toast.info('Exiting patient registration');
                         }
-                        window.location.href = '/reception/patient-registration';
+                        window.location.href = '/reception/patient-registration/list';
                       }
                     }}
                     className="flex items-center space-x-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium shadow-lg transition-all duration-200"
