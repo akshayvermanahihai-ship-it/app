@@ -68,6 +68,7 @@ export default function ConsolePatient({ params }: { params: Promise<{ cro: stri
   }, [cro]);
 
   const fetchPatientData = async () => {
+    
     setLoading(true);
     try {
       const response = await fetch(`/api/console/patient/${encodeURIComponent(cro)}`);
